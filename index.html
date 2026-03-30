@@ -3,94 +3,232 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AR Checker - Jorge</title>
+<title>Medidor AR - Jorge</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <style>
 body {
     margin:0;
+    overflow:hidden;
     font-family:sans-serif;
     background:black;
     color:white;
+}
+
+/* Pantalla inicial */
+#start {
+    position:fixed;
+    inset:0;
     display:flex;
-    align-items:center;
+    flex-direction:column;
     justify-content:center;
+    align-items:center;
     text-align:center;
-    height:100vh;
 }
-#box {
-    background: rgba(0,0,0,0.7);
-    padding:20px;
-    border-radius:15px;
-}
+
 button {
-    padding:12px;
+    padding:15px 25px;
     border:none;
-    border-radius:10px;
+    border-radius:12px;
     background:#ffcc00;
     font-weight:bold;
+    margin-top:20px;
+}
+
+/* UI dentro de AR */
+#ui {
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    display:none;
+    flex-direction:column;
+    justify-content:space-between;
+    pointer-events:none;
+}
+
+#top {
+    text-align:center;
+    background:rgba(0,0,0,0.6);
+    margin:20px;
+    padding:15px;
+    border-radius:15px;
+}
+
+#dist {
+    font-size:2rem;
+    color:#ffcc00;
+}
+
+#crosshair {
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    width:40px;
+    height:40px;
+    border:2px solid white;
+    border-radius:50%;
 }
 </style>
 </head>
 
 <body>
 
-<div id="box">
-    <h2>Verificando AR...</h2>
-    <p id="msg">Un momento Jorge...</p>
-    <button id="btn" style="display:none;">Iniciar AR</button>
+<div id="start">
+    <h2>Medidor AR</h2>
+    <p id="msg">Verificando soporte...</p>
+    <button id="startBtn" style="display:none;">Iniciar AR</button>
+</div>
+
+<div id="ui">
+    <div id="top">
+        <div id="dist">0.00 m</div>
+        <div id="status">Buscando superficie...</div>
+    </div>
+    <div id="crosshair"></div>
 </div>
 
 <script type="module">
 import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
+let camera, scene, renderer, reticle;
+let hitTestSource = null;
+let hitTestSourceRequested = false;
+let points = [];
+let line;
+
 const msg = document.getElementById("msg");
-const btn = document.getElementById("btn");
+const btn = document.getElementById("startBtn");
+const ui = document.getElementById("ui");
 
 async function checkAR() {
-
     if (!navigator.xr) {
-        msg.innerText = "❌ Tu navegador no soporta WebXR";
+        msg.innerText = "Tu navegador no soporta AR";
         return;
     }
 
-    try {
-        const supported = await navigator.xr.isSessionSupported('immersive-ar');
+    const supported = await navigator.xr.isSessionSupported('immersive-ar');
 
-        if (!supported) {
-            msg.innerText = "❌ Tu teléfono no soporta AR (falta ARCore o hardware)";
-            return;
-        }
-
-        msg.innerText = "✅ AR compatible. Puedes iniciar.";
-        btn.style.display = "block";
-
-        btn.onclick = startAR;
-
-    } catch (e) {
-        msg.innerText = "⚠️ Error verificando AR";
+    if (!supported) {
+        msg.innerText = "Tu teléfono no soporta AR";
+        return;
     }
+
+    msg.innerText = "AR listo";
+    btn.style.display = "block";
 }
 
-function startAR() {
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
+btn.onclick = initAR;
 
-    const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+function initAR() {
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
+
+    renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.xr.enabled = true;
-    document.body.innerHTML = ""; // limpiar UI
     document.body.appendChild(renderer.domElement);
 
     document.body.appendChild(
-        ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] })
+        ARButton.createButton(renderer, {
+            requiredFeatures: ['hit-test']
+        })
     );
 
     scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
-    renderer.setAnimationLoop(() => {
-        renderer.render(scene, camera);
+    reticle = new THREE.Mesh(
+        new THREE.RingGeometry(0.04,0.05,32).rotateX(-Math.PI/2),
+        new THREE.MeshBasicMaterial({color:0xffcc00})
+    );
+    reticle.matrixAutoUpdate = false;
+    reticle.visible = false;
+    scene.add(reticle);
+
+    renderer.xr.addEventListener('sessionstart', () => {
+        document.getElementById("start").style.display = "none";
+        ui.style.display = "flex";
     });
+
+    window.addEventListener("click", addPoint);
+
+    renderer.setAnimationLoop(render);
+}
+
+function addPoint() {
+    if (!reticle.visible) return;
+
+    const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
+
+    const sphere = new THREE.Mesh(
+        new THREE.SphereGeometry(0.015,16,16),
+        new THREE.MeshBasicMaterial({color:0x00ff00})
+    );
+
+    sphere.position.copy(pos);
+    scene.add(sphere);
+    points.push(pos);
+
+    updateLine();
+
+    if (navigator.vibrate) navigator.vibrate(50);
+}
+
+function updateLine() {
+
+    if (line) scene.remove(line);
+
+    if (points.length >= 2) {
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:0xffcc00}));
+        scene.add(line);
+    }
+
+    let dist = 0;
+    for (let i=0;i<points.length-1;i++){
+        dist += points[i].distanceTo(points[i+1]);
+    }
+
+    document.getElementById("dist").innerText = dist.toFixed(2) + " m";
+}
+
+function render(timestamp, frame) {
+    if (frame) {
+
+        const session = renderer.xr.getSession();
+        const refSpace = renderer.xr.getReferenceSpace();
+
+        if (!hitTestSourceRequested) {
+            session.requestReferenceSpace('viewer').then(ref => {
+                session.requestHitTestSource({space: ref}).then(src => {
+                    hitTestSource = src;
+                });
+            });
+            hitTestSourceRequested = true;
+        }
+
+        if (hitTestSource) {
+            const hits = frame.getHitTestResults(hitTestSource);
+
+            const status = document.getElementById("status");
+
+            if (hits.length) {
+                const hit = hits[0];
+                reticle.visible = true;
+                reticle.matrix.fromArray(hit.getPose(refSpace).transform.matrix);
+                status.innerText = "Toca pantalla para medir";
+            } else {
+                reticle.visible = false;
+                status.innerText = "Mueve el celular lentamente";
+            }
+        }
+    }
+
+    renderer.render(scene, camera);
 }
 
 checkAR();
