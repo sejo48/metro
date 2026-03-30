@@ -16,7 +16,6 @@ body {
     color:white;
 }
 
-/* Pantalla inicial */
 #start {
     position:fixed;
     inset:0;
@@ -36,7 +35,6 @@ button {
     margin-top:20px;
 }
 
-/* UI dentro de AR */
 #ui {
     position:absolute;
     top:0;
@@ -58,8 +56,13 @@ button {
 }
 
 #dist {
-    font-size:2rem;
-    color:#ffcc00;
+    font-size:3rem;
+    color:#00ffcc;
+    font-weight:bold;
+}
+
+#status {
+    font-size:1rem;
 }
 
 #crosshair {
@@ -141,6 +144,7 @@ function initAR() {
 
     scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
+    // Retícula
     reticle = new THREE.Mesh(
         new THREE.RingGeometry(0.04,0.05,32).rotateX(-Math.PI/2),
         new THREE.MeshBasicMaterial({color:0xffcc00})
@@ -159,10 +163,14 @@ function initAR() {
     renderer.setAnimationLoop(render);
 }
 
+// 👉 AÑADIR PUNTOS
 function addPoint() {
     if (!reticle.visible) return;
 
     const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
+
+    // 🔥 Forzar mismo plano (clave para precisión)
+    pos.y = reticle.position.y;
 
     const sphere = new THREE.Mesh(
         new THREE.SphereGeometry(0.015,16,16),
@@ -178,25 +186,41 @@ function addPoint() {
     if (navigator.vibrate) navigator.vibrate(50);
 }
 
+// 👉 ACTUALIZAR LÍNEA Y DISTANCIA
 function updateLine() {
 
     if (line) scene.remove(line);
 
     if (points.length >= 2) {
-        const geo = new THREE.BufferGeometry().setFromPoints(points);
-        line = new THREE.Line(geo, new THREE.LineBasicMaterial({color:0xffcc00}));
+
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        line = new THREE.Line(
+            geometry,
+            new THREE.LineBasicMaterial({ color: 0xffcc00 })
+        );
         scene.add(line);
-    }
 
-    let dist = 0;
-    for (let i=0;i<points.length-1;i++){
-        dist += points[i].distanceTo(points[i+1]);
-    }
+        let total = 0;
 
-    document.getElementById("dist").innerText = dist.toFixed(2) + " m";
+        for (let i = 0; i < points.length - 1; i++) {
+
+            const p1 = points[i];
+            const p2 = points[i + 1];
+
+            // 🔥 Ignorar altura (solo piso)
+            const dx = p1.x - p2.x;
+            const dz = p1.z - p2.z;
+
+            total += Math.sqrt(dx * dx + dz * dz);
+        }
+
+        document.getElementById("dist").innerText = total.toFixed(2) + " m";
+    }
 }
 
+// 👉 RENDER + HIT TEST
 function render(timestamp, frame) {
+
     if (frame) {
 
         const session = renderer.xr.getSession();
@@ -212,18 +236,18 @@ function render(timestamp, frame) {
         }
 
         if (hitTestSource) {
-            const hits = frame.getHitTestResults(hitTestSource);
 
+            const hits = frame.getHitTestResults(hitTestSource);
             const status = document.getElementById("status");
 
             if (hits.length) {
                 const hit = hits[0];
                 reticle.visible = true;
                 reticle.matrix.fromArray(hit.getPose(refSpace).transform.matrix);
-                status.innerText = "Toca pantalla para medir";
+                status.innerText = "Toca para medir";
             } else {
                 reticle.visible = false;
-                status.innerText = "Mueve el celular lentamente";
+                status.innerText = "Mueve el celular";
             }
         }
     }
