@@ -2,168 +2,99 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Medidor AR PRO - Jorge</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AR Checker - Jorge</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
 <style>
-body{margin:0;overflow:hidden;font-family:sans-serif;background:black}
-#panel{position:absolute;top:10px;left:10px;color:white;background:rgba(0,0,0,0.5);padding:10px;border-radius:10px}
-#historial{position:absolute;bottom:10px;left:10px;color:white;background:rgba(0,0,0,0.5);padding:10px;border-radius:10px;max-height:150px;overflow:auto}
-button{padding:10px;margin-top:5px;width:100%}
+body {
+    margin:0;
+    font-family:sans-serif;
+    background:black;
+    color:white;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    height:100vh;
+}
+#box {
+    background: rgba(0,0,0,0.7);
+    padding:20px;
+    border-radius:15px;
+}
+button {
+    padding:12px;
+    border:none;
+    border-radius:10px;
+    background:#ffcc00;
+    font-weight:bold;
+}
 </style>
 </head>
+
 <body>
-<div id="panel">
-<div>Distancia: <span id="dist">0.00</span> m</div>
-<div id="msg">Iniciando...</div>
-<button onclick="reset()">Reset</button>
+
+<div id="box">
+    <h2>Verificando AR...</h2>
+    <p id="msg">Un momento Jorge...</p>
+    <button id="btn" style="display:none;">Iniciar AR</button>
 </div>
-<div id="historial"></div>
 
 <script type="module">
 import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
-let camera, scene, renderer, reticle;
-let hitTestSource=null;
-let hitTestSourceRequested=false;
-let points=[];
-let spheres=[];
-let line=null;
+const msg = document.getElementById("msg");
+const btn = document.getElementById("btn");
 
-init();
-mostrarHistorial();
+async function checkAR() {
 
-function init(){
-scene=new THREE.Scene();
-camera=new THREE.PerspectiveCamera(70,window.innerWidth/window.innerHeight,0.01,20);
+    if (!navigator.xr) {
+        msg.innerText = "❌ Tu navegador no soporta WebXR";
+        return;
+    }
 
-renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
-renderer.setSize(window.innerWidth,window.innerHeight);
-renderer.xr.enabled=true;
-document.body.appendChild(renderer.domElement);
+    try {
+        const supported = await navigator.xr.isSessionSupported('immersive-ar');
 
-document.body.appendChild(ARButton.createButton(renderer,{requiredFeatures:['hit-test']}));
+        if (!supported) {
+            msg.innerText = "❌ Tu teléfono no soporta AR (falta ARCore o hardware)";
+            return;
+        }
 
-scene.add(new THREE.HemisphereLight(0xffffff,0xbbbbff,1));
+        msg.innerText = "✅ AR compatible. Puedes iniciar.";
+        btn.style.display = "block";
 
-reticle=new THREE.Mesh(
-new THREE.RingGeometry(0.04,0.05,32).rotateX(-Math.PI/2),
-new THREE.MeshBasicMaterial({color:0xffcc00})
-);
-reticle.matrixAutoUpdate=false;
-reticle.visible=false;
-scene.add(reticle);
+        btn.onclick = startAR;
 
-window.addEventListener('click',colocarPunto);
-
-renderer.setAnimationLoop(render);
+    } catch (e) {
+        msg.innerText = "⚠️ Error verificando AR";
+    }
 }
 
-function colocarPunto(){
-if(!reticle.visible) return;
+function startAR() {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.01, 20);
 
-let pos=new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
+    const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.innerHTML = ""; // limpiar UI
+    document.body.appendChild(renderer.domElement);
 
-if(points.length>0){
-pos=suavizar(pos,points[points.length-1]);
+    document.body.appendChild(
+        ARButton.createButton(renderer, { requiredFeatures: ['hit-test'] })
+    );
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
+
+    renderer.setAnimationLoop(() => {
+        renderer.render(scene, camera);
+    });
 }
 
-const sphere=new THREE.Mesh(
-new THREE.SphereGeometry(0.015,16,16),
-new THREE.MeshBasicMaterial({color:0x00ff00})
-);
-
-sphere.position.copy(pos);
-scene.add(sphere);
-
-points.push(pos);
-spheres.push(sphere);
-
-updateLine();
-
-if(navigator.vibrate) navigator.vibrate(50);
-
-const beep=new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
-beep.play();
-}
-
-function suavizar(nuevo,anterior){
-return anterior.clone().lerp(nuevo,0.5);
-}
-
-function updateLine(){
-if(line) scene.remove(line);
-
-if(points.length>=2){
-const geo=new THREE.BufferGeometry().setFromPoints(points);
-line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xffcc00}));
-scene.add(line);
-}
-
-let dist=0;
-for(let i=0;i<points.length-1;i++){
-dist+=points[i].distanceTo(points[i+1]);
-}
-
-document.getElementById('dist').innerText=dist.toFixed(2);
-
-guardarMedida(dist.toFixed(2));
-mostrarHistorial();
-}
-
-function guardarMedida(d){
-let h=JSON.parse(localStorage.getItem("medidas"))||[];
-h.push(d);
-localStorage.setItem("medidas",JSON.stringify(h));
-}
-
-function mostrarHistorial(){
-let h=JSON.parse(localStorage.getItem("medidas"))||[];
-document.getElementById('historial').innerHTML=h.map(m=>`<div>${m} m</div>`).join('');
-}
-
-function reset(){
-points=[];
-spheres.forEach(s=>scene.remove(s));
-spheres=[];
-if(line) scene.remove(line);
-line=null;
-document.getElementById('dist').innerText="0.00";
-}
-
-function render(timestamp,frame){
-if(frame){
-const session=renderer.xr.getSession();
-const refSpace=renderer.xr.getReferenceSpace();
-
-if(!hitTestSourceRequested){
-session.requestReferenceSpace('viewer').then(ref=>{
-session.requestHitTestSource({space:ref}).then(src=>{
-hitTestSource=src;
-});
-});
-hitTestSourceRequested=true;
-}
-
-if(hitTestSource){
-const hits=frame.getHitTestResults(hitTestSource);
-const msg=document.getElementById('msg');
-
-if(hits.length){
-const hit=hits[0];
-reticle.visible=true;
-reticle.matrix.fromArray(hit.getPose(refSpace).transform.matrix);
-msg.innerText="Listo. Toque pantalla para medir";
-}
-else{
-reticle.visible=false;
-msg.innerText="Mueva el celular lentamente hacia el suelo";
-}
-}
-}
-
-renderer.render(scene,camera);
-}
+checkAR();
 </script>
+
 </body>
 </html>
