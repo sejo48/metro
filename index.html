@@ -53,16 +53,16 @@
     <!-- Interfaz de Medición -->
     <div id="ui-layer" class="fixed inset-0 pointer-events-none hidden flex-col justify-between p-6 z-40">
         
+        <!-- Panel de Resultados -->
         <div class="flex flex-col items-center gap-4">
             <div class="glass p-5 rounded-[2.5rem] text-center shadow-2xl neon-border min-w-[260px] relative overflow-hidden">
-                <div id="area-display" class="hidden mb-2 border-b border-white/10 pb-2">
-                    <div class="text-[9px] text-cyan-400 font-black uppercase tracking-[0.2em]">Área (Piso)</div>
-                    <div class="text-3xl font-black text-white italic"><span id="area-val">0</span> <span class="text-sm not-italic text-cyan-500">m²</span></div>
+                <div id="height-mode-indicator" class="hidden mb-2 bg-yellow-500/20 py-1 rounded-full border border-yellow-500/30">
+                    <span class="text-[9px] font-black uppercase text-yellow-500 tracking-widest italic">Modo Altura Activo</span>
                 </div>
                 
                 <div class="flex flex-col items-center">
-                    <div class="text-[9px] text-slate-400 font-black uppercase tracking-widest">Distancia en 3D</div>
-                    <div id="distance-display" class="text-4xl font-black text-white tracking-tighter italic leading-none">0.00 <span class="text-lg not-italic font-medium text-cyan-400" id="unit-label">m</span></div>
+                    <div class="text-[9px] text-slate-400 font-black uppercase tracking-widest">Medición Actual</div>
+                    <div id="distance-display" class="text-5xl font-black text-white tracking-tighter italic leading-none">0.00 <span class="text-xl not-italic font-medium text-cyan-400">m</span></div>
                 </div>
 
                 <!-- Indicador de Nivel -->
@@ -71,7 +71,7 @@
                 </div>
             </div>
             
-            <div id="status-tag" class="glass px-4 py-1 rounded-full text-[9px] font-black uppercase text-white/50 tracking-widest transition-colors">
+            <div id="status-tag" class="glass px-4 py-1 rounded-full text-[9px] font-black uppercase text-white/50 tracking-widest transition-colors italic">
                 Buscando superficie...
             </div>
         </div>
@@ -82,32 +82,22 @@
             <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee]"></div>
         </div>
 
-        <!-- Botones -->
+        <!-- Botones Inferiores -->
         <div class="flex flex-col gap-4 pointer-events-auto">
-            <div class="flex justify-between items-center gap-2">
-                <button id="undo-btn" class="glass p-5 rounded-3xl active:scale-90 border-yellow-500/20 shadow-lg text-yellow-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            <div class="flex justify-between items-center gap-3">
+                <button id="height-btn" class="glass flex-1 py-6 rounded-[2.5rem] active:scale-95 border-yellow-500/30 flex items-center justify-center gap-3 shadow-lg transition-colors" title="Medir Altura">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                     </svg>
+                    <span class="text-white text-xs font-black uppercase tracking-widest">Medir Altura</span>
                 </button>
 
-                <button id="calc-area-btn" class="glass flex-1 py-5 rounded-[2rem] active:scale-95 border-cyan-500/30 flex items-center justify-center gap-2 shadow-lg">
-                    <span class="text-white text-[10px] font-black uppercase tracking-widest">Cerrar Área</span>
-                </button>
-
-                <button id="clear-btn" class="glass p-5 rounded-3xl active:scale-90 border-red-500/20 shadow-lg text-red-500">
+                <button id="clear-btn" class="glass p-6 rounded-[2rem] active:scale-90 border-red-500/20 shadow-lg text-red-500">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                 </button>
             </div>
-
-            <button id="screenshot-btn" class="glass w-full py-5 rounded-[2rem] active:scale-95 border-white/10 flex items-center justify-center gap-3 shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                </svg>
-                <span class="text-white text-[10px] font-black uppercase tracking-widest">Guardar Foto</span>
-            </button>
         </div>
     </div>
 
@@ -122,14 +112,16 @@
         let points = [];
         let markers = [];
         let mainLine = null;
+        let isHeightMode = false;
+        let basePoint = null;
 
         const distanceDisplay = document.getElementById('distance-display');
-        const areaDisplay = document.getElementById('area-display');
-        const areaVal = document.getElementById('area-val');
         const uiLayer = document.getElementById('ui-layer');
         const startScreen = document.getElementById('start-screen');
         const statusTag = document.getElementById('status-tag');
         const levelBar = document.getElementById('level-bar');
+        const heightBtn = document.getElementById('height-btn');
+        const heightModeIndicator = document.getElementById('height-mode-indicator');
 
         async function init() {
             if ('xr' in navigator) {
@@ -141,7 +133,7 @@
         function setupAR() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.xr.enabled = true;
@@ -158,7 +150,6 @@
 
             scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2));
 
-            // Retícula mejorada (con auto-orientación)
             reticle = new THREE.Mesh(
                 new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2),
                 new THREE.MeshBasicMaterial({ color: 0x22d3ee })
@@ -174,44 +165,78 @@
             });
 
             window.addEventListener('click', (ev) => {
-                if (!reticle.visible || ev.target.closest('button')) return;
-                const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
+                if (ev.target.closest('button')) return;
                 
-                const marker = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.012, 16, 16),
-                    new THREE.MeshBasicMaterial({ color: points.length === 0 ? 0x22c55e : 0x06b6d4 })
-                );
-                marker.position.copy(pos);
-                scene.add(marker);
-                markers.push(marker);
-                points.push(pos);
-                updateLine();
+                if (isHeightMode) {
+                    handleHeightModeClick();
+                } else {
+                    handleNormalModeClick();
+                }
             });
 
+            heightBtn.addEventListener('click', toggleHeightMode);
             document.getElementById('clear-btn').addEventListener('click', () => location.reload());
-            document.getElementById('undo-btn').addEventListener('click', () => {
-                if (points.length === 0) return;
-                scene.remove(markers.pop());
-                points.pop();
-                updateLine();
-            });
-            document.getElementById('calc-area-btn').addEventListener('click', calculateArea);
-            document.getElementById('screenshot-btn').addEventListener('click', () => {
-                const img = renderer.domElement.toDataURL('image/png');
-                const link = document.createElement('a');
-                link.download = `Medida_Jorge_${Date.now()}.png`;
-                link.href = img;
-                link.click();
-            });
 
             renderer.setAnimationLoop(render);
+        }
+
+        function toggleHeightMode() {
+            isHeightMode = !isHeightMode;
+            if (isHeightMode) {
+                heightBtn.classList.add('bg-yellow-500/20', 'border-yellow-500');
+                heightModeIndicator.classList.remove('hidden');
+                statusTag.innerText = "Fije la base en el suelo";
+                basePoint = null;
+            } else {
+                heightBtn.classList.remove('bg-yellow-500/20', 'border-yellow-500');
+                heightModeIndicator.classList.add('hidden');
+                statusTag.innerText = "Buscando superficie...";
+            }
+            clearMeasurements();
+        }
+
+        function handleHeightModeClick() {
+            if (!reticle.visible && !basePoint) return;
+
+            if (!basePoint) {
+                basePoint = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
+                addMarker(basePoint, 0x22c55e);
+                statusTag.innerText = "Suba el móvil para medir altura";
+            } else {
+                const currentHeight = Math.abs(camera.position.y - basePoint.y);
+                const topPoint = new THREE.Vector3(basePoint.x, basePoint.y + currentHeight, basePoint.z);
+                addMarker(topPoint, 0xeab308);
+                points.push(basePoint, topPoint);
+                updateLine();
+                statusTag.innerText = "Altura fijada";
+                if (navigator.vibrate) navigator.vibrate(50);
+            }
+        }
+
+        function handleNormalModeClick() {
+            if (!reticle.visible) return;
+            const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
+            addMarker(pos, points.length === 0 ? 0x22c55e : 0x06b6d4);
+            points.push(pos);
+            updateLine();
+            if (navigator.vibrate) navigator.vibrate(40);
+        }
+
+        function addMarker(pos, color) {
+            const marker = new THREE.Mesh(
+                new THREE.SphereGeometry(0.012, 16, 16),
+                new THREE.MeshBasicMaterial({ color: color })
+            );
+            marker.position.copy(pos);
+            scene.add(marker);
+            markers.push(marker);
         }
 
         function handleOrientation(event) {
             const roll = event.gamma; 
             const offset = (roll / 45) * 50;
             levelBar.style.left = `${50 + offset}%`;
-            levelBar.className = Math.abs(roll) < 2 ? "absolute h-full bg-green-400 w-4 rounded-full transition-all duration-75" : "absolute h-full bg-cyan-400 w-4 rounded-full transition-all duration-75";
+            levelBar.className = Math.abs(roll) < 2 ? "absolute h-full bg-green-400 w-4 rounded-full" : "absolute h-full bg-cyan-400 w-4 rounded-full";
         }
 
         function updateLine() {
@@ -223,52 +248,42 @@
                 let total = 0;
                 for (let i = 0; i < points.length - 1; i++) total += points[i].distanceTo(points[i+1]);
                 distanceDisplay.innerHTML = `${total.toFixed(2)} <span class="text-xl">m</span>`;
-            } else {
-                distanceDisplay.innerHTML = `0.00 <span class="text-xl">m</span>`;
             }
         }
 
-        function calculateArea() {
-            if (points.length < 3) return;
-            const pts = [...points, points[0]];
+        function clearMeasurements() {
+            markers.forEach(m => { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
             if (mainLine) scene.remove(mainLine);
-            const geometry = new THREE.BufferGeometry().setFromPoints(pts);
-            mainLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 3 }));
-            scene.add(mainLine);
-
-            let area = 0;
-            for (let i = 0; i < points.length; i++) {
-                let j = (i + 1) % points.length;
-                area += points[i].x * points[j].z;
-                area -= points[j].x * points[i].z;
-            }
-            area = Math.abs(area) / 2;
-            areaVal.innerText = area.toFixed(2);
-            areaDisplay.classList.remove('hidden');
+            markers = []; points = []; mainLine = null;
+            distanceDisplay.innerHTML = `0.00 <span class="text-xl">m</span>`;
         }
 
         function render(timestamp, frame) {
             if (frame) {
                 const session = renderer.xr.getSession();
                 const refSpace = renderer.xr.getReferenceSpace();
+                
                 if (!hitTestSourceRequested) {
                     session.requestReferenceSpace('viewer').then(rs => {
                         session.requestHitTestSource({ space: rs }).then(src => hitTestSource = src);
                     });
                     hitTestSourceRequested = true;
                 }
+                
                 if (hitTestSource) {
                     const hits = frame.getHitTestResults(hitTestSource);
                     if (hits.length > 0) {
+                        const hit = hits[0];
                         reticle.visible = true;
-                        reticle.matrix.fromArray(hits[0].getPose(refSpace).transform.matrix);
-                        statusTag.innerText = "Superficie detectada";
-                        statusTag.classList.replace('text-white/50', 'text-cyan-400');
+                        reticle.matrix.fromArray(hit.getPose(refSpace).transform.matrix);
                     } else {
                         reticle.visible = false;
-                        statusTag.innerText = "Buscando superficie...";
-                        statusTag.classList.replace('text-cyan-400', 'text-white/50');
                     }
+                }
+
+                if (isHeightMode && basePoint && !points.length) {
+                    const currentH = Math.abs(camera.position.y - basePoint.y);
+                    distanceDisplay.innerHTML = `${currentH.toFixed(2)} <span class="text-xl">m</span>`;
                 }
             }
             renderer.render(scene, camera);
