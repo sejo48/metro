@@ -3,72 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Medidor AR Pro - Jorge</title>
+    <title>Medidor AR Pro - Jorge Hernández</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: system-ui, sans-serif; }
+        body { margin: 0; overflow: hidden; background-color: #020617; font-family: system-ui, -apple-system, sans-serif; }
         canvas { display: block; }
         .glass {
-            background: rgba(15, 23, 42, 0.85);
+            background: rgba(15, 23, 42, 0.8);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .neo-glow {
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
         }
         .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        
+        #ar-button-container button {
+            margin: 0 auto !important;
+            display: block !important;
+        }
     </style>
 </head>
 <body>
 
     <!-- Pantalla de Inicio -->
-    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center text-center p-6 bg-slate-950 text-white">
-        <div class="mb-6 p-5 bg-cyan-500 rounded-3xl shadow-[0_0_30px_rgba(6,182,212,0.5)]">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
+    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-between py-12 px-6 bg-slate-950 text-white text-center">
+        
+        <div class="flex flex-col items-center mt-10">
+            <div class="mb-6 p-6 bg-cyan-500 rounded-[2.5rem] neo-glow shadow-[0_0_40px_rgba(6,182,212,0.4)]">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-14 w-14 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+            </div>
+            <h1 class="text-4xl font-black mb-2 tracking-tighter uppercase leading-none">MEDIDOR AR <span class="text-cyan-400 font-light text-3xl">PRO</span></h1>
+            <p id="status-msg" class="text-slate-400 max-w-xs text-sm font-medium">Jorge, presiona el botón para iniciar la medición.</p>
         </div>
-        <h1 class="text-4xl font-black mb-2 tracking-tight">MEDIDOR AR <span class="text-cyan-500">PRO</span></h1>
-        <p id="status-msg" class="text-slate-400 mb-10 max-w-xs text-sm leading-relaxed">Cargando sistema de medición...</p>
-        <div id="ar-button-container" class="w-full max-w-xs flex flex-col gap-4"></div>
+
+        <div id="ar-button-container" class="w-full flex justify-center"></div>
+
+        <div class="flex flex-col items-center gap-1 opacity-70">
+            <p class="text-[9px] uppercase tracking-[0.4em] font-bold text-cyan-500">Aplicación hecha por</p>
+            <p class="text-base font-semibold tracking-tight text-white/90">Jorge Hernández 2026</p>
+        </div>
     </div>
 
     <!-- Interfaz de Usuario en AR -->
     <div id="ui-layer" class="fixed inset-0 pointer-events-none hidden flex-col justify-between p-6 z-40">
-        <!-- Panel Superior -->
+        <!-- Superior -->
         <div class="flex flex-col items-center gap-2">
-            <div class="glass px-8 py-4 rounded-[2rem] text-center shadow-2xl border-cyan-500/30">
-                <div id="distance-display" class="text-5xl font-black text-white tracking-tighter italic leading-tight">0.00 <span class="text-xl not-italic font-medium text-cyan-400">m</span></div>
-                <div id="cm-display" class="text-cyan-400/80 font-bold text-xs tracking-widest uppercase">0 cm</div>
+            <div class="glass px-8 py-5 rounded-[2.5rem] text-center shadow-2xl border-cyan-500/20">
+                <div id="distance-display" class="text-5xl font-black text-white tracking-tighter italic leading-none">0.00 <span class="text-xl not-italic font-medium text-cyan-400">m</span></div>
+                <div id="cm-display" class="text-cyan-400/80 font-bold text-xs tracking-widest uppercase mt-1">0 cm</div>
             </div>
-            <div id="segment-label" class="glass px-4 py-1 rounded-full text-[10px] font-bold text-cyan-300 uppercase tracking-widest opacity-0 transition-opacity">
+            <div id="segment-label" class="glass px-4 py-1.5 rounded-full text-[10px] font-bold text-cyan-300 uppercase tracking-widest opacity-0 transition-opacity">
                 Tramo: <span id="current-segment-dist">0.00</span>m
             </div>
         </div>
 
         <!-- Punto de mira -->
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
-            <div class="w-14 h-14 border-2 border-white/10 rounded-full"></div>
-            <div class="absolute w-8 h-[1px] bg-white/30"></div>
-            <div class="absolute h-8 w-[1px] bg-white/30"></div>
-            <div class="w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee]"></div>
+            <div class="w-16 h-16 border border-white/10 rounded-full"></div>
+            <div class="absolute w-10 h-[1px] bg-white/20"></div>
+            <div class="absolute h-10 w-[1px] bg-white/20"></div>
+            <div class="w-2.5 h-2.5 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee] border-2 border-slate-900"></div>
         </div>
 
         <!-- Panel Inferior -->
-        <div class="flex justify-between items-end gap-4 pointer-events-auto">
-            <button id="clear-btn" class="glass p-5 rounded-3xl active:scale-90 transition-all border-red-500/20 shadow-lg group">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-red-500 group-active:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div class="flex justify-between items-end gap-3 pointer-events-auto">
+            <button id="clear-btn" class="glass p-5 rounded-[2rem] active:scale-90 transition-all border-red-500/20 shadow-lg group">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+            </button>
+
+            <button id="screenshot-btn" class="glass p-5 rounded-[2rem] active:scale-90 transition-all border-cyan-500/20 shadow-lg group">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
             </button>
             
             <div class="flex-1 text-center pb-2">
-                <div id="ar-status" class="text-white text-[10px] font-bold bg-slate-900/80 border border-white/10 py-2 px-4 rounded-2xl inline-block backdrop-blur-md uppercase tracking-[0.2em] pulse">
+                <div id="ar-status" class="text-white text-[9px] font-bold bg-slate-950/80 border border-cyan-500/20 py-2.5 px-4 rounded-full inline-block backdrop-blur-md uppercase tracking-[0.2em] pulse">
                     Buscando superficie...
                 </div>
             </div>
 
-            <button id="exit-btn" class="glass p-5 rounded-3xl active:scale-90 transition-all border-white/10 shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <button id="exit-btn" class="glass p-5 rounded-[2rem] active:scale-90 transition-all border-white/10 shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
             </button>
@@ -96,6 +120,7 @@
         const uiLayer = document.getElementById('ui-layer');
         const startScreen = document.getElementById('start-screen');
         const clearBtn = document.getElementById('clear-btn');
+        const screenshotBtn = document.getElementById('screenshot-btn');
         const exitBtn = document.getElementById('exit-btn');
         const segmentLabel = document.getElementById('segment-label');
         const currentSegmentDist = document.getElementById('current-segment-dist');
@@ -104,14 +129,12 @@
             if ('xr' in navigator) {
                 const supported = await navigator.xr.isSessionSupported('immersive-ar');
                 if (supported) {
-                    statusMsg.innerText = "Jorge, presiona el botón para iniciar.";
                     setupAR();
                 } else {
-                    statusMsg.innerText = "Error: AR no soportado en este móvil.";
-                    statusMsg.classList.add('text-red-400');
+                    statusMsg.innerText = "Error: AR no soportado.";
                 }
             } else {
-                statusMsg.innerText = "Error: Navegador no compatible.";
+                statusMsg.innerText = "Error: Navegador incompatible.";
             }
         }
 
@@ -119,7 +142,13 @@
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, precision: 'mediump' });
+            // Importante: preserveDrawingBuffer para capturas de pantalla
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true, 
+                alpha: true, 
+                precision: 'mediump',
+                preserveDrawingBuffer: true 
+            });
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.xr.enabled = true;
@@ -131,16 +160,15 @@
                 domOverlay: { root: document.body }
             });
             
-            button.classList.add('!bg-cyan-500', '!text-slate-950', '!font-black', '!rounded-2xl', '!py-5', '!px-10', '!border-none', '!static', '!uppercase', '!tracking-widest', '!text-sm', '!shadow-xl');
+            button.classList.add('!bg-cyan-500', '!text-slate-950', '!font-black', '!rounded-2xl', '!py-5', '!px-12', '!border-none', '!static', '!uppercase', '!tracking-widest', '!text-sm', '!shadow-xl');
             document.getElementById('ar-button-container').appendChild(button);
 
-            scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
+            scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.5));
 
-            // Retícula
             reticle = new THREE.Group();
             const ring = new THREE.Mesh(
-                new THREE.RingGeometry(0.035, 0.04, 32).rotateX(-Math.PI / 2),
-                new THREE.MeshBasicMaterial({ color: 0x06b6d4 })
+                new THREE.RingGeometry(0.038, 0.042, 32).rotateX(-Math.PI / 2),
+                new THREE.MeshBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.8 })
             );
             const centerDot = new THREE.Mesh(
                 new THREE.CircleGeometry(0.003, 16).rotateX(-Math.PI / 2),
@@ -151,10 +179,9 @@
             reticle.visible = false;
             scene.add(reticle);
 
-            // Línea previa
             const previewGeom = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
             previewLine = new THREE.Line(previewGeom, new THREE.LineDashedMaterial({ 
-                color: 0x06b6d4, dashSize: 0.01, gapSize: 0.01, transparent: true, opacity: 0.6 
+                color: 0x06b6d4, dashSize: 0.01, gapSize: 0.01, transparent: true, opacity: 0.5 
             }));
             previewLine.visible = false;
             scene.add(previewLine);
@@ -163,18 +190,16 @@
                 currentSession = renderer.xr.getSession();
                 startScreen.style.display = 'none';
                 uiLayer.style.display = 'flex';
-                // Resetear estado al iniciar nueva sesión
                 hitTestSourceRequested = false;
-                hitTestSource = null;
             });
 
             renderer.xr.addEventListener('sessionend', () => {
-                currentSession = null;
-                location.reload(); // Recarga limpia para evitar bloqueos de memoria
+                location.reload(); 
             });
 
             window.addEventListener('click', onSelect);
             clearBtn.addEventListener('click', clearMeasurements);
+            screenshotBtn.addEventListener('click', takeScreenshot);
             exitBtn.addEventListener('click', () => { if(currentSession) currentSession.end(); });
             window.addEventListener('resize', onWindowResize);
 
@@ -183,19 +208,15 @@
 
         function onSelect(ev) {
             if (!reticle.visible || ev.target.closest('button')) return;
-
             const position = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-            
             const marker = new THREE.Mesh(
                 new THREE.SphereGeometry(0.012, 12, 12),
                 new THREE.MeshBasicMaterial({ color: points.length === 0 ? 0x22c55e : 0x06b6d4 })
             );
             marker.position.copy(position);
             scene.add(marker);
-            
             markers.push(marker);
             points.push(position);
-
             updateMainLine();
             if (navigator.vibrate) navigator.vibrate(40);
         }
@@ -206,53 +227,38 @@
                 mainLine.geometry.dispose();
                 mainLine.material.dispose();
             }
-
             if (points.length >= 2) {
                 const geometry = new THREE.BufferGeometry().setFromPoints(points);
                 const material = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
                 mainLine = new THREE.Line(geometry, material);
                 scene.add(mainLine);
-
                 let total = 0;
                 for (let i = 0; i < points.length - 1; i++) {
                     total += points[i].distanceTo(points[i+1]);
                 }
-                
                 distanceDisplay.innerHTML = `${total.toFixed(2)} <span class="text-xl italic font-medium text-cyan-400">m</span>`;
                 cmDisplay.innerText = `${(total * 100).toFixed(1)} CM`;
             }
         }
 
-        function updatePreview(reticlePos) {
-            if (points.length > 0 && reticle.visible) {
-                const lastPoint = points[points.length - 1];
-                previewLine.geometry.setFromPoints([lastPoint, reticlePos]);
-                previewLine.computeLineDistances();
-                previewLine.visible = true;
-
-                const dist = lastPoint.distanceTo(reticlePos);
-                segmentLabel.style.opacity = "1";
-                currentSegmentDist.innerText = dist.toFixed(2);
-            } else {
-                previewLine.visible = false;
-                segmentLabel.style.opacity = "0";
+        function takeScreenshot() {
+            try {
+                // Capturamos el canvas
+                const dataURL = renderer.domElement.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = `Medida_Jorge_${new Date().getTime()}.png`;
+                link.href = dataURL;
+                link.click();
+                if (navigator.vibrate) navigator.vibrate([30, 30]);
+            } catch (e) {
+                console.error("Error al capturar", e);
             }
         }
 
         function clearMeasurements() {
-            markers.forEach(m => {
-                scene.remove(m);
-                m.geometry.dispose();
-                m.material.dispose();
-            });
-            if (mainLine) {
-                scene.remove(mainLine);
-                mainLine.geometry.dispose();
-                mainLine.material.dispose();
-            }
-            markers = [];
-            points = [];
-            mainLine = null;
+            markers.forEach(m => { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
+            if (mainLine) { scene.remove(mainLine); mainLine.geometry.dispose(); mainLine.material.dispose(); }
+            markers = []; points = []; mainLine = null;
             previewLine.visible = false;
             distanceDisplay.innerHTML = `0.00 <span class="text-xl">m</span>`;
             cmDisplay.innerText = `0 CM`;
@@ -269,41 +275,41 @@
             if (frame) {
                 const session = renderer.xr.getSession();
                 const referenceSpace = renderer.xr.getReferenceSpace();
-
                 if (!hitTestSourceRequested) {
                     session.requestReferenceSpace('viewer').then((refSpace) => {
                         session.requestHitTestSource({ space: refSpace }).then((source) => {
                             hitTestSource = source;
                         });
-                    }).catch(() => { hitTestSourceRequested = false; });
+                    });
                     hitTestSourceRequested = true;
                 }
-
                 if (hitTestSource) {
                     const hitTestResults = frame.getHitTestResults(hitTestSource);
                     if (hitTestResults.length > 0) {
                         const hit = hitTestResults[0];
                         const pose = hit.getPose(referenceSpace);
-
                         reticle.visible = true;
                         reticle.matrix.fromArray(pose.transform.matrix);
-                        
                         const currentPos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                        updatePreview(currentPos);
-
-                        arStatus.innerText = "Toca para fijar";
+                        if (points.length > 0) {
+                            previewLine.geometry.setFromPoints([points[points.length-1], currentPos]);
+                            previewLine.computeLineDistances();
+                            previewLine.visible = true;
+                            segmentLabel.style.opacity = "1";
+                            currentSegmentDist.innerText = points[points.length-1].distanceTo(currentPos).toFixed(2);
+                        }
+                        arStatus.innerText = "Listo para medir";
                         arStatus.classList.replace('text-white', 'text-cyan-400');
                     } else {
                         reticle.visible = false;
                         previewLine.visible = false;
-                        arStatus.innerText = "Escaneando suelo...";
+                        arStatus.innerText = "Escaneando superficie...";
                         arStatus.classList.replace('text-cyan-400', 'text-white');
                     }
                 }
             }
             renderer.render(scene, camera);
         }
-
         init();
     </script>
 </body>
