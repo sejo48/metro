@@ -1,305 +1,169 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Medidor AR Pro - Jorge</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        /* Forzamos transparencia absoluta para ver la cámara */
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-        html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            background: none !important;
-            background-color: transparent !important;
-            overflow: hidden;
-            font-family: sans-serif;
-        }
-
-        /* Pantalla de carga/inicio */
-        #start-screen {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background-color: #000;
-            color: #fff;
-            z-index: 2000;
-            text-align: center;
-            padding: 20px;
-        }
-
-        #ui-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: none;
-            flex-direction: column;
-            justify-content: space-between;
-            pointer-events: none;
-            z-index: 10;
-            background: none !important;
-        }
-
-        /* Mira Central (Retículo) */
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
-            border: 2px solid rgba(255, 255, 255, 0.8);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-        #crosshair::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 6px;
-            height: 6px;
-            background: #ffcc00;
-            border-radius: 50%;
-        }
-
-        .info-panel {
-            background: rgba(0, 0, 0, 0.5);
-            margin: 20px;
-            padding: 15px;
-            border-radius: 15px;
-            text-align: center;
-            pointer-events: auto;
-            color: white;
-        }
-        #distance-text {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #ffcc00;
-        }
-
-        .bottom-controls {
-            display: flex;
-            align-items: center;
-            justify-content: space-evenly;
-            padding-bottom: env(safe-area-inset-bottom, 30px);
-            pointer-events: auto;
-        }
-
-        /* Botón de Acción Principal (+) */
-        #action-btn {
-            width: 90px;
-            height: 90px;
-            background: #ffcc00;
-            border-radius: 50%;
-            border: 5px solid white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-        }
-        #action-btn svg { width: 50px; height: 50px; fill: black; }
-
-        .btn-side {
-            background: rgba(0, 0, 0, 0.5);
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid white;
-        }
-
-        /* Botón inyectado por Three.js */
-        #ARButton {
-            position: relative !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            margin-top: 20px;
-            padding: 15px 40px !important;
-            background: #ffcc00 !important;
-            color: black !important;
-            border-radius: 30px !important;
-            font-weight: bold !important;
-            border: none !important;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Medidor AR PRO - Jorge</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+body{margin:0;overflow:hidden;font-family:sans-serif;background:black}
+#panel{position:absolute;top:10px;left:10px;color:white;background:rgba(0,0,0,0.5);padding:10px;border-radius:10px}
+#historial{position:absolute;bottom:10px;left:10px;color:white;background:rgba(0,0,0,0.5);padding:10px;border-radius:10px;max-height:150px;overflow:auto}
+button{padding:10px;margin-top:5px;width:100%}
+</style>
 </head>
 <body>
+<div id="panel">
+<div>Distancia: <span id="dist">0.00</span> m</div>
+<div id="msg">Iniciando...</div>
+<button onclick="reset()">Reset</button>
+</div>
+<div id="historial"></div>
 
-    <div id="start-screen">
-        <h1 style="color: #ffcc00;">MEDIDOR AR</h1>
-        <p>Jorge, presiona el botón amarillo para iniciar la cámara.</p>
-        <div id="btn-container"></div>
-        <p id="status-log" style="font-size: 0.8rem; margin-top: 20px; opacity: 0.6;"></p>
-    </div>
+<script type="module">
+import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
-    <div id="ui-overlay">
-        <div class="info-panel">
-            <div id="distance-text">0.00 m</div>
-            <div id="status-msg" style="font-size: 0.8rem;">BUSCANDO SUELO...</div>
-        </div>
+let camera, scene, renderer, reticle;
+let hitTestSource=null;
+let hitTestSourceRequested=false;
+let points=[];
+let spheres=[];
+let line=null;
 
-        <div id="crosshair"></div>
+init();
+mostrarHistorial();
 
-        <div class="bottom-controls">
-            <div class="btn-side" id="undo-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M9 14L4 9l5-5M4 9h11a4 4 0 0 1 4 4v1"></path></svg>
-            </div>
-            
-            <div id="action-btn">
-                <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-            </div>
+function init(){
+scene=new THREE.Scene();
+camera=new THREE.PerspectiveCamera(70,window.innerWidth/window.innerHeight,0.01,20);
 
-            <div class="btn-side" id="reset-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-            </div>
-        </div>
-    </div>
+renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.xr.enabled=true;
+document.body.appendChild(renderer.domElement);
 
-    <script type="module">
-        import { ARButton } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/webxr/ARButton.js';
+document.body.appendChild(ARButton.createButton(renderer,{requiredFeatures:['hit-test']}));
 
-        let camera, scene, renderer, reticle;
-        let hitTestSource = null;
-        let hitTestSourceRequested = false;
-        let points = [];
-        let spheres = [];
-        let line = null;
+scene.add(new THREE.HemisphereLight(0xffffff,0xbbbbff,1));
 
-        init();
+reticle=new THREE.Mesh(
+new THREE.RingGeometry(0.04,0.05,32).rotateX(-Math.PI/2),
+new THREE.MeshBasicMaterial({color:0xffcc00})
+);
+reticle.matrixAutoUpdate=false;
+reticle.visible=false;
+scene.add(reticle);
 
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+window.addEventListener('click',colocarPunto);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true;
-            document.body.appendChild(renderer.domElement);
+renderer.setAnimationLoop(render);
+}
 
-            const overlay = document.getElementById('ui-overlay');
-            const arBtn = ARButton.createButton(renderer, { 
-                requiredFeatures: ['hit-test'],
-                optionalFeatures: ['dom-overlay'],
-                domOverlay: { root: overlay }
-            });
-            document.getElementById('btn-container').appendChild(arBtn);
+function colocarPunto(){
+if(!reticle.visible) return;
 
-            renderer.xr.addEventListener('sessionstart', () => {
-                document.getElementById('start-screen').style.display = 'none';
-                overlay.style.display = 'flex';
-            });
+let pos=new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
 
-            // Luz básica
-            scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
+if(points.length>0){
+pos=suavizar(pos,points[points.length-1]);
+}
 
-            // Retículo para detectar el suelo
-            reticle = new THREE.Mesh(
-                new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2),
-                new THREE.MeshBasicMaterial({ color: 0xffcc00 })
-            );
-            reticle.matrixAutoUpdate = false;
-            reticle.visible = false;
-            scene.add(reticle);
+const sphere=new THREE.Mesh(
+new THREE.SphereGeometry(0.015,16,16),
+new THREE.MeshBasicMaterial({color:0x00ff00})
+);
 
-            // Botón de Acción (+)
-            document.getElementById('action-btn').addEventListener('pointerdown', (e) => {
-                e.preventDefault();
-                if (reticle.visible) {
-                    const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                    const sphere = new THREE.Mesh(
-                        new THREE.SphereGeometry(0.015, 16, 16),
-                        new THREE.MeshBasicMaterial({ color: 0xffffff })
-                    );
-                    sphere.position.copy(pos);
-                    scene.add(sphere);
-                    points.push(pos);
-                    spheres.push(sphere);
-                    updateLine();
-                    if (navigator.vibrate) navigator.vibrate(50);
-                }
-            });
+sphere.position.copy(pos);
+scene.add(sphere);
 
-            document.getElementById('undo-btn').onclick = () => {
-                if (points.length > 0) {
-                    points.pop();
-                    scene.remove(spheres.pop());
-                    updateLine();
-                }
-            };
+points.push(pos);
+spheres.push(sphere);
 
-            document.getElementById('reset-btn').onclick = () => {
-                points = [];
-                spheres.forEach(s => scene.remove(s));
-                spheres = [];
-                if (line) scene.remove(line);
-                line = null;
-                document.getElementById('distance-text').innerText = "0.00 m";
-            };
+updateLine();
 
-            renderer.setAnimationLoop(render);
-        }
+if(navigator.vibrate) navigator.vibrate(50);
 
-        function updateLine() {
-            if (line) scene.remove(line);
-            if (points.length >= 2) {
-                const geo = new THREE.BufferGeometry().setFromPoints(points);
-                line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffcc00, linewidth: 5 }));
-                scene.add(line);
-            }
-            let dist = 0;
-            for (let i = 0; i < points.length - 1; i++) dist += points[i].distanceTo(points[i+1]);
-            document.getElementById('distance-text').innerText = dist.toFixed(2) + " m";
-        }
+const beep=new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg');
+beep.play();
+}
 
-        function render(timestamp, frame) {
-            if (frame) {
-                const session = renderer.xr.getSession();
-                const referenceSpace = renderer.xr.getReferenceSpace();
+function suavizar(nuevo,anterior){
+return anterior.clone().lerp(nuevo,0.5);
+}
 
-                if (!hitTestSourceRequested) {
-                    session.requestReferenceSpace('viewer').then(ref => {
-                        session.requestHitTestSource({ space: ref }).then(source => {
-                            hitTestSource = source;
-                        });
-                    });
-                    hitTestSourceRequested = true;
-                }
+function updateLine(){
+if(line) scene.remove(line);
 
-                if (hitTestSource) {
-                    const results = frame.getHitTestResults(hitTestSource);
-                    const msg = document.getElementById('status-msg');
-                    if (results.length) {
-                        const hit = results[0];
-                        reticle.visible = true;
-                        reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-                        msg.innerText = "LISTO PARA MEDIR";
-                        msg.style.color = "#00ff00";
-                    } else {
-                        reticle.visible = false;
-                        msg.innerText = "CALIBRANDO SUELO...";
-                        msg.style.color = "#ff4444";
-                    }
-                }
-            }
-            renderer.render(scene, camera);
-        }
-    </script>
+if(points.length>=2){
+const geo=new THREE.BufferGeometry().setFromPoints(points);
+line=new THREE.Line(geo,new THREE.LineBasicMaterial({color:0xffcc00}));
+scene.add(line);
+}
+
+let dist=0;
+for(let i=0;i<points.length-1;i++){
+dist+=points[i].distanceTo(points[i+1]);
+}
+
+document.getElementById('dist').innerText=dist.toFixed(2);
+
+guardarMedida(dist.toFixed(2));
+mostrarHistorial();
+}
+
+function guardarMedida(d){
+let h=JSON.parse(localStorage.getItem("medidas"))||[];
+h.push(d);
+localStorage.setItem("medidas",JSON.stringify(h));
+}
+
+function mostrarHistorial(){
+let h=JSON.parse(localStorage.getItem("medidas"))||[];
+document.getElementById('historial').innerHTML=h.map(m=>`<div>${m} m</div>`).join('');
+}
+
+function reset(){
+points=[];
+spheres.forEach(s=>scene.remove(s));
+spheres=[];
+if(line) scene.remove(line);
+line=null;
+document.getElementById('dist').innerText="0.00";
+}
+
+function render(timestamp,frame){
+if(frame){
+const session=renderer.xr.getSession();
+const refSpace=renderer.xr.getReferenceSpace();
+
+if(!hitTestSourceRequested){
+session.requestReferenceSpace('viewer').then(ref=>{
+session.requestHitTestSource({space:ref}).then(src=>{
+hitTestSource=src;
+});
+});
+hitTestSourceRequested=true;
+}
+
+if(hitTestSource){
+const hits=frame.getHitTestResults(hitTestSource);
+const msg=document.getElementById('msg');
+
+if(hits.length){
+const hit=hits[0];
+reticle.visible=true;
+reticle.matrix.fromArray(hit.getPose(refSpace).transform.matrix);
+msg.innerText="Listo. Toque pantalla para medir";
+}
+else{
+reticle.visible=false;
+msg.innerText="Mueva el celular lentamente hacia el suelo";
+}
+}
+}
+
+renderer.render(scene,camera);
+}
+</script>
 </body>
 </html>
