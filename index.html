@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Topografía AR - Jorge Hernández</title>
+    <title>Medidor AR Pro - Jorge Hernández</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { margin: 0; overflow: hidden; background-color: #020617; font-family: system-ui, sans-serif; }
@@ -18,7 +18,6 @@
         .pulse { animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         
-        /* Ajuste específico para el botón inyectado por WebXR */
         #ar-button-container button {
             white-space: nowrap !important;
             width: auto !important;
@@ -36,20 +35,18 @@
         <div class="mt-10">
             <div class="mb-6 w-20 h-20 bg-cyan-600 rounded-3xl mx-auto flex items-center justify-center shadow-[0_0_40px_rgba(8,145,178,0.4)]">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A2 2 0 013 15.487V6.512a2 2 0 011.553-1.943L9 3m6 17l5.447-2.724A2 2 0 0021 15.487V6.512a2 2 0 00-1.553-1.943L15 3m-6 17V3m6 17V3" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
             </div>
-            <h1 class="text-3xl font-black tracking-tighter uppercase italic">TOPOGRAFÍA <span class="text-cyan-400">AR</span></h1>
-            <p class="text-slate-400 text-xs tracking-widest mt-2 uppercase font-bold opacity-60">Medición de Propiedades en Metros</p>
+            <h1 class="text-3xl font-black tracking-tighter uppercase italic text-white leading-none">MEDIDOR <span class="text-cyan-400">AR</span></h1>
+            <p class="text-slate-400 text-xs tracking-widest mt-2 uppercase font-bold opacity-60">Paredes, Muebles y Terrenos</p>
         </div>
 
-        <div id="ar-button-container" class="w-full flex justify-center px-4">
-            <!-- El botón se inyecta aquí con JS -->
-        </div>
+        <div id="ar-button-container" class="w-full flex justify-center px-4"></div>
 
         <div class="opacity-80">
-            <p class="text-[10px] tracking-[0.3em] text-cyan-500 font-black mb-1 uppercase">Software para Terrenos</p>
-            <p class="text-lg font-light tracking-tight">Jorge Hernández <span class="font-bold text-cyan-400">2026</span></p>
+            <p class="text-[10px] tracking-[0.3em] text-cyan-500 font-black mb-1 uppercase">Jorge Hernández</p>
+            <p class="text-lg font-light tracking-tight">Especialista <span class="font-bold text-cyan-400 italic">2026</span></p>
         </div>
     </div>
 
@@ -59,34 +56,34 @@
         <div class="flex flex-col items-center gap-2">
             <div class="glass p-6 rounded-[2.5rem] text-center shadow-2xl neon-border min-w-[240px]">
                 <div id="area-display" class="hidden mb-2">
-                    <div class="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-1">Área Total</div>
+                    <div class="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-1">Área Calculada</div>
                     <div class="text-4xl font-black text-white italic leading-none"><span id="area-val">0</span> <span class="text-lg not-italic text-cyan-500">m²</span></div>
                 </div>
-                <div class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Perímetro Total</div>
+                <div class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Medida Total</div>
                 <div id="distance-display" class="text-5xl font-black text-white tracking-tighter italic leading-none">0.00 <span class="text-xl not-italic font-medium text-cyan-400">m</span></div>
             </div>
         </div>
 
         <!-- Cursor Central -->
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
-            <div class="w-12 h-12 border border-white/10 rounded-full"></div>
-            <div class="w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee]"></div>
+            <div class="w-12 h-12 border border-white/20 rounded-full"></div>
+            <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_10px_#22d3ee]"></div>
         </div>
 
         <!-- Controles -->
         <div class="flex justify-between items-center gap-3 pointer-events-auto">
-            <button id="clear-btn" class="glass p-5 rounded-3xl active:scale-90 border-red-500/20">
+            <button id="clear-btn" class="glass p-5 rounded-3xl active:scale-90 border-red-500/20 shadow-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
             </button>
 
-            <button id="calc-area-btn" class="glass px-6 py-4 rounded-3xl active:scale-95 border-cyan-500/30 flex items-center gap-2">
+            <button id="calc-area-btn" class="glass px-6 py-4 rounded-3xl active:scale-95 border-cyan-500/30 flex items-center gap-2 shadow-lg">
                 <div class="w-2 h-2 bg-cyan-400 rounded-full pulse"></div>
-                <span class="text-white text-[10px] font-black uppercase tracking-widest">Cerrar Área</span>
+                <span class="text-white text-[10px] font-black uppercase tracking-widest">Calcular Área</span>
             </button>
 
-            <button id="screenshot-btn" class="glass p-5 rounded-3xl active:scale-90 border-white/10">
+            <button id="screenshot-btn" class="glass p-5 rounded-3xl active:scale-90 border-white/10 shadow-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 </svg>
@@ -136,26 +133,17 @@
                 domOverlay: { root: document.body }
             });
             
-            // AJUSTE DE ESTILO PARA QUE LA LETRA QUEPA BIEN
             button.classList.add(
-                '!bg-cyan-600', 
-                '!text-white', 
-                '!font-black', 
-                '!rounded-2xl', 
-                '!py-4', 
-                '!px-6', 
-                '!border-none', 
-                '!static', 
-                '!uppercase', 
-                '!tracking-tight', 
-                '!text-sm',
-                '!shadow-xl'
+                '!bg-cyan-600', '!text-white', '!font-black', '!rounded-2xl', 
+                '!py-4', '!px-8', '!border-none', '!static', '!uppercase', 
+                '!tracking-tight', '!text-sm', '!shadow-xl'
             );
             
             document.getElementById('ar-button-container').appendChild(button);
 
             scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2));
 
+            // Retícula adaptable a la superficie (vertical u horizontal)
             reticle = new THREE.Mesh(
                 new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2),
                 new THREE.MeshBasicMaterial({ color: 0x22d3ee })
@@ -174,7 +162,7 @@
                 const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
                 
                 const marker = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.015, 16, 16),
+                    new THREE.SphereGeometry(0.012, 16, 16),
                     new THREE.MeshBasicMaterial({ color: points.length === 0 ? 0x22c55e : 0x06b6d4 })
                 );
                 marker.position.copy(pos);
@@ -198,7 +186,9 @@
                 scene.add(mainLine);
                 
                 let total = 0;
-                for (let i = 0; i < points.length - 1; i++) total += points[i].distanceTo(points[i+1]);
+                for (let i = 0; i < points.length - 1; i++) {
+                    total += points[i].distanceTo(points[i+1]);
+                }
                 distanceDisplay.innerHTML = `${total.toFixed(2)} <span class="text-xl">m</span>`;
             }
         }
@@ -209,6 +199,7 @@
             const pts = [...points, points[0]];
             updateLineWithPoints(pts);
 
+            // Cálculo de área en 3D simplificado (si están en el mismo plano)
             let area = 0;
             for (let i = 0; i < points.length; i++) {
                 let j = (i + 1) % points.length;
@@ -241,8 +232,10 @@
                 if (hitTestSource) {
                     const hits = frame.getHitTestResults(hitTestSource);
                     if (hits.length > 0) {
+                        const hit = hits[0];
                         reticle.visible = true;
-                        reticle.matrix.fromArray(hits[0].getPose(refSpace).transform.matrix);
+                        // Ajusta la posición y orientación de la retícula a la superficie detectada
+                        reticle.matrix.fromArray(hit.getPose(refSpace).transform.matrix);
                     } else {
                         reticle.visible = false;
                     }
