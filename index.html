@@ -26,6 +26,10 @@
             justify-content: center !important;
             align-items: center !important;
         }
+
+        #level-indicator {
+            transition: transform 0.1s ease-out;
+        }
     </style>
 </head>
 <body>
@@ -52,42 +56,65 @@
 
     <!-- Interfaz de Medición -->
     <div id="ui-layer" class="fixed inset-0 pointer-events-none hidden flex-col justify-between p-6 z-40">
-        <!-- Panel de Resultados -->
-        <div class="flex flex-col items-center gap-2">
-            <div class="glass p-6 rounded-[2.5rem] text-center shadow-2xl neon-border min-w-[240px]">
-                <div id="area-display" class="hidden mb-2">
-                    <div class="text-[10px] text-cyan-400 font-black uppercase tracking-widest mb-1">Área Calculada</div>
-                    <div class="text-4xl font-black text-white italic leading-none"><span id="area-val">0</span> <span class="text-lg not-italic text-cyan-500">m²</span></div>
+        
+        <!-- Panel de Resultados e Indicador de Nivel -->
+        <div class="flex flex-col items-center gap-4">
+            <div class="glass p-5 rounded-[2.5rem] text-center shadow-2xl neon-border min-w-[260px] relative overflow-hidden">
+                <div id="area-display" class="hidden mb-2 border-b border-white/10 pb-2">
+                    <div class="text-[9px] text-cyan-400 font-black uppercase tracking-[0.2em]">Área Calculada</div>
+                    <div class="text-3xl font-black text-white italic"><span id="area-val">0</span> <span class="text-sm not-italic text-cyan-500">m²</span></div>
                 </div>
-                <div class="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Medida Total</div>
-                <div id="distance-display" class="text-5xl font-black text-white tracking-tighter italic leading-none">0.00 <span class="text-xl not-italic font-medium text-cyan-400">m</span></div>
+                
+                <div class="flex justify-between items-center px-2">
+                    <div class="text-left">
+                        <div class="text-[9px] text-slate-400 font-black uppercase tracking-widest">Distancia Total</div>
+                        <div id="distance-display" class="text-4xl font-black text-white tracking-tighter italic">0.00 <span class="text-lg not-italic font-medium text-cyan-400" id="unit-label">m</span></div>
+                    </div>
+                    <button id="unit-toggle" class="glass pointer-events-auto px-3 py-1 rounded-full text-[10px] font-bold text-cyan-400 border-cyan-500/30">M / CM</button>
+                </div>
+
+                <!-- Nivel de Burbuja Visual -->
+                <div class="mt-3 h-1 w-full bg-slate-800 rounded-full relative overflow-hidden">
+                    <div id="level-bar" class="absolute h-full bg-cyan-400 w-4 left-1/2 -translate-x-1/2 rounded-full transition-all duration-75"></div>
+                </div>
             </div>
         </div>
 
         <!-- Cursor Central -->
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
-            <div class="w-12 h-12 border border-white/20 rounded-full"></div>
-            <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_10px_#22d3ee]"></div>
+            <div class="w-14 h-14 border border-white/10 rounded-full"></div>
+            <div class="w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee]"></div>
         </div>
 
-        <!-- Controles -->
-        <div class="flex justify-between items-center gap-3 pointer-events-auto">
-            <button id="clear-btn" class="glass p-5 rounded-3xl active:scale-90 border-red-500/20 shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-            </button>
+        <!-- Barra de Herramientas Inferior -->
+        <div class="flex flex-col gap-4 pointer-events-auto">
+            <div class="flex justify-between items-center gap-2">
+                <button id="undo-btn" class="glass p-4 rounded-2xl active:scale-90 border-yellow-500/20 shadow-lg text-yellow-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                </button>
 
-            <button id="calc-area-btn" class="glass px-6 py-4 rounded-3xl active:scale-95 border-cyan-500/30 flex items-center gap-2 shadow-lg">
-                <div class="w-2 h-2 bg-cyan-400 rounded-full pulse"></div>
-                <span class="text-white text-[10px] font-black uppercase tracking-widest">Calcular Área</span>
-            </button>
+                <button id="calc-area-btn" class="glass flex-1 py-4 rounded-3xl active:scale-95 border-cyan-500/30 flex items-center justify-center gap-2 shadow-lg">
+                    <div class="w-2 h-2 bg-cyan-400 rounded-full pulse"></div>
+                    <span class="text-white text-[10px] font-black uppercase tracking-widest">Calcular Área</span>
+                </button>
 
-            <button id="screenshot-btn" class="glass p-5 rounded-3xl active:scale-90 border-white/10 shadow-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                </svg>
-            </button>
+                <button id="clear-btn" class="glass p-4 rounded-2xl active:scale-90 border-red-500/20 shadow-lg text-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="flex justify-center">
+                <button id="screenshot-btn" class="glass w-full py-4 rounded-3xl active:scale-95 border-white/10 flex items-center justify-center gap-3 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    </svg>
+                    <span class="text-white text-[10px] font-black uppercase tracking-widest">Capturar Reporte</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -102,14 +129,19 @@
         let points = [];
         let markers = [];
         let mainLine = null;
+        let currentUnit = 'm'; // 'm' o 'cm'
 
         const distanceDisplay = document.getElementById('distance-display');
+        const unitLabel = document.getElementById('unit-label');
         const areaDisplay = document.getElementById('area-display');
         const areaVal = document.getElementById('area-val');
         const uiLayer = document.getElementById('ui-layer');
         const startScreen = document.getElementById('start-screen');
         const clearBtn = document.getElementById('clear-btn');
+        const undoBtn = document.getElementById('undo-btn');
+        const unitToggle = document.getElementById('unit-toggle');
         const calcAreaBtn = document.getElementById('calc-area-btn');
+        const levelBar = document.getElementById('level-bar');
 
         async function init() {
             if ('xr' in navigator) {
@@ -133,17 +165,11 @@
                 domOverlay: { root: document.body }
             });
             
-            button.classList.add(
-                '!bg-cyan-600', '!text-white', '!font-black', '!rounded-2xl', 
-                '!py-4', '!px-8', '!border-none', '!static', '!uppercase', 
-                '!tracking-tight', '!text-sm', '!shadow-xl'
-            );
-            
+            button.classList.add('!bg-cyan-600', '!text-white', '!font-black', '!rounded-2xl', '!py-4', '!px-8', '!border-none', '!static', '!uppercase', '!tracking-tight', '!text-sm', '!shadow-xl');
             document.getElementById('ar-button-container').appendChild(button);
 
             scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2));
 
-            // Retícula adaptable a la superficie (vertical u horizontal)
             reticle = new THREE.Mesh(
                 new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2),
                 new THREE.MeshBasicMaterial({ color: 0x22d3ee })
@@ -155,6 +181,7 @@
             renderer.xr.addEventListener('sessionstart', () => {
                 startScreen.style.display = 'none';
                 uiLayer.style.display = 'flex';
+                window.addEventListener('deviceorientation', handleOrientation);
             });
 
             window.addEventListener('click', (ev) => {
@@ -173,9 +200,41 @@
             });
 
             clearBtn.addEventListener('click', () => location.reload());
+            undoBtn.addEventListener('click', undoLastPoint);
+            unitToggle.addEventListener('click', toggleUnits);
             calcAreaBtn.addEventListener('click', calculateArea);
 
             renderer.setAnimationLoop(render);
+        }
+
+        function handleOrientation(event) {
+            // Beta es la inclinación adelante/atrás (pitch)
+            // Gamma es la inclinación izquierda/derecha (roll)
+            const roll = event.gamma; 
+            const offset = (roll / 45) * 50; // Mapear -45 a 45 grados a porcentaje
+            levelBar.style.left = `${50 + offset}%`;
+            
+            // Si está nivelado (cerca de 0), cambiar color
+            if (Math.abs(roll) < 2) {
+                levelBar.classList.replace('bg-cyan-400', 'bg-green-400');
+            } else {
+                levelBar.classList.replace('bg-green-400', 'bg-cyan-400');
+            }
+        }
+
+        function undoLastPoint() {
+            if (points.length === 0) return;
+            const lastMarker = markers.pop();
+            scene.remove(lastMarker);
+            points.pop();
+            updateLine();
+            areaDisplay.classList.add('hidden');
+        }
+
+        function toggleUnits() {
+            currentUnit = currentUnit === 'm' ? 'cm' : 'm';
+            unitLabel.innerText = currentUnit;
+            updateLine();
         }
 
         function updateLine() {
@@ -186,20 +245,26 @@
                 scene.add(mainLine);
                 
                 let total = 0;
-                for (let i = 0; i < points.length - 1; i++) {
-                    total += points[i].distanceTo(points[i+1]);
+                for (let i = 0; i < points.length - 1; i++) total += points[i].distanceTo(points[i+1]);
+                
+                if (currentUnit === 'cm') {
+                    distanceDisplay.innerHTML = `${(total * 100).toFixed(1)} <span class="text-xl">cm</span>`;
+                } else {
+                    distanceDisplay.innerHTML = `${total.toFixed(2)} <span class="text-xl">m</span>`;
                 }
-                distanceDisplay.innerHTML = `${total.toFixed(2)} <span class="text-xl">m</span>`;
+            } else {
+                distanceDisplay.innerHTML = `0.00 <span class="text-xl">${currentUnit}</span>`;
             }
         }
 
         function calculateArea() {
             if (points.length < 3) return;
-            
             const pts = [...points, points[0]];
-            updateLineWithPoints(pts);
+            if (mainLine) scene.remove(mainLine);
+            const geometry = new THREE.BufferGeometry().setFromPoints(pts);
+            mainLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 3 }));
+            scene.add(mainLine);
 
-            // Cálculo de área en 3D simplificado (si están en el mismo plano)
             let area = 0;
             for (let i = 0; i < points.length; i++) {
                 let j = (i + 1) % points.length;
@@ -207,16 +272,8 @@
                 area -= points[j].x * points[i].z;
             }
             area = Math.abs(area) / 2;
-            
             areaVal.innerText = area.toFixed(2);
             areaDisplay.classList.remove('hidden');
-        }
-
-        function updateLineWithPoints(pts) {
-            if (mainLine) scene.remove(mainLine);
-            const geometry = new THREE.BufferGeometry().setFromPoints(pts);
-            mainLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 3 }));
-            scene.add(mainLine);
         }
 
         function render(timestamp, frame) {
@@ -232,10 +289,8 @@
                 if (hitTestSource) {
                     const hits = frame.getHitTestResults(hitTestSource);
                     if (hits.length > 0) {
-                        const hit = hits[0];
                         reticle.visible = true;
-                        // Ajusta la posición y orientación de la retícula a la superficie detectada
-                        reticle.matrix.fromArray(hit.getPose(refSpace).transform.matrix);
+                        reticle.matrix.fromArray(hits[0].getPose(refSpace).transform.matrix);
                     } else {
                         reticle.visible = false;
                     }
