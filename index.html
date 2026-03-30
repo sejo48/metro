@@ -9,25 +9,26 @@
         body {
             margin: 0;
             overflow: hidden;
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #000;
             touch-action: none;
         }
 
+        /* Contenedor de la interfaz sobre la cámara */
         #ui-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            display: flex;
+            display: none; /* Se activa al iniciar AR */
             flex-direction: column;
             justify-content: space-between;
             pointer-events: none;
             z-index: 10;
         }
 
-        /* Mira Central Mejorada */
+        /* Mira central */
         #crosshair {
             position: absolute;
             top: 50%;
@@ -51,6 +52,7 @@
             box-shadow: 0 0 10px #ffcc00;
         }
 
+        /* Panel de información superior */
         .info-panel {
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(10px);
@@ -68,13 +70,14 @@
             margin: 0;
         }
         #status-text {
-            font-size: 0.75rem;
-            color: #ccc;
+            font-size: 0.8rem;
+            color: #ff4444;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            font-weight: bold;
             margin-top: 5px;
         }
 
+        /* Controles inferiores para el pulgar */
         .bottom-controls {
             display: flex;
             align-items: center;
@@ -85,36 +88,26 @@
             background: linear-gradient(transparent, rgba(0,0,0,0.9));
         }
 
-        /* Botón de Acción con efecto de pulso */
         #action-btn {
-            width: 95px;
-            height: 95px;
+            width: 90px;
+            height: 90px;
             background: #ffcc00;
             border-radius: 50%;
-            border: 6px solid #fff;
+            border: 5px solid white;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
-            transition: all 0.1s;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            transition: transform 0.1s;
         }
-        #action-btn:active {
-            transform: scale(0.85);
-            background: #e6b800;
-        }
-        #action-btn.disabled {
-            opacity: 0.2;
-            filter: grayscale(1);
-            pointer-events: none;
-        }
-        #action-btn svg { width: 50px; height: 50px; fill: black; }
+        #action-btn:active { transform: scale(0.85); }
+        #action-btn svg { width: 45px; height: 45px; fill: black; }
 
         .btn-side {
             background: rgba(255, 255, 255, 0.1);
-            color: white;
-            width: 60px;
-            height: 60px;
+            width: 55px;
+            height: 55px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -123,6 +116,7 @@
             border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
+        /* Pantalla de inicio personalizada */
         #start-screen {
             position: fixed;
             inset: 0;
@@ -130,33 +124,53 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: #000;
+            background: #111;
             z-index: 1000;
-            text-align: center;
-            padding: 30px;
             color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Ajuste para el botón que genera Three.js */
+        #ARButton {
+            position: static !important;
+            padding: 20px 50px !important;
+            border-radius: 40px !important;
+            background: #ffcc00 !important;
+            color: black !important;
+            font-weight: 900 !important;
+            font-size: 1.2rem !important;
+            border: none !important;
+            cursor: pointer !important;
+            opacity: 1 !important;
+            box-shadow: 0 10px 25px rgba(255,204,0,0.3) !important;
         }
     </style>
 </head>
 <body>
 
     <div id="start-screen">
-        <h1 style="color: #ffcc00; font-size: 2.8rem; margin: 0;">MEDIDOR AR</h1>
-        <p style="opacity: 0.8; margin: 20px 0 40px;">Jorge, mueve el móvil suavemente en círculos para detectar el suelo.</p>
-        <button id="ar-launch-btn" style="padding: 22px 70px; border-radius: 50px; border: none; background: #ffcc00; font-weight: 900; font-size: 1.3rem; color: black; cursor: pointer; box-shadow: 0 10px 30px rgba(255,204,0,0.3);">EMPEZAR</button>
+        <h1 style="color: #ffcc00; font-size: 2.5rem; margin-bottom: 10px;">MEDIDOR AR</h1>
+        <p style="opacity: 0.8; margin-bottom: 40px;">Jorge, detecta el suelo y usa el botón <b>+</b></p>
+        <div id="button-container">
+            <!-- Aquí Three.js inyectará el botón oficial -->
+        </div>
+        <p id="error-msg" style="color: #ff4444; margin-top: 20px; font-weight: bold; display: none;">
+            Tu dispositivo no soporta Realidad Aumentada o necesitas usar HTTPS.
+        </p>
     </div>
 
-    <div id="ui-overlay" style="display: none;">
+    <div id="ui-overlay">
         <div class="info-panel">
             <div id="distance-text">0.00 m</div>
-            <div id="status-text">Buscando suelo...</div>
+            <div id="status-text">CALIBRANDO...</div>
         </div>
 
         <div id="crosshair"></div>
 
         <div class="bottom-controls">
             <div class="btn-side" id="undo-btn">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5M4 9h11a4 4 0 0 1 4 4v1"></path></svg>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5M4 9h11a4 4 0 0 1 4 4v1"></path></svg>
             </div>
             
             <div id="action-btn">
@@ -164,7 +178,7 @@
             </div>
 
             <div class="btn-side" id="reset-btn">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </div>
         </div>
     </div>
@@ -182,7 +196,7 @@
 
         init();
 
-        function init() {
+        async function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
 
@@ -195,20 +209,31 @@
             renderer.xr.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            const overlay = document.getElementById('ui-overlay');
+            // Crear botón de AR oficial
             const arBtn = ARButton.createButton(renderer, { 
                 requiredFeatures: ['hit-test'],
                 optionalFeatures: ['dom-overlay'],
-                domOverlay: { root: overlay }
+                domOverlay: { root: document.getElementById('ui-overlay') }
             });
 
-            document.getElementById('ar-launch-btn').onclick = () => {
-                arBtn.click();
-                document.getElementById('start-screen').style.display = 'none';
-                overlay.style.display = 'flex';
-            };
+            // Si Three.js no pudo crear el botón (no compatible), avisamos
+            if (arBtn.textContent.includes("NOT SUPPORTED") || arBtn.textContent.includes("NOT FOUND")) {
+                document.getElementById('error-msg').style.display = 'block';
+                document.getElementById('error-msg').innerText = arBtn.textContent;
+            }
 
-            // Retículo (indicador visual en el suelo)
+            // Inyectamos el botón real en nuestra pantalla de inicio
+            arBtn.id = "ARButton";
+            arBtn.textContent = "EMPEZAR MEDICIÓN";
+            document.getElementById('button-container').appendChild(arBtn);
+
+            // Escuchar cuando el usuario entra a AR
+            renderer.xr.addEventListener('sessionstart', () => {
+                document.getElementById('start-screen').style.display = 'none';
+                document.getElementById('ui-overlay').style.display = 'flex';
+            });
+
+            // Retículo para el suelo
             reticle = new THREE.Mesh(
                 new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2),
                 new THREE.MeshBasicMaterial({ color: 0xffcc00 })
@@ -217,67 +242,54 @@
             reticle.visible = false;
             scene.add(reticle);
 
-            // FUNCIÓN PARA AÑADIR PUNTO
-            const handleAction = (e) => {
-                if (e) e.preventDefault();
+            // Función para añadir puntos (Botón +)
+            const addPointAction = (e) => {
+                e.preventDefault();
                 if (reticle.visible) {
                     const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                    addPoint(pos);
+                    
+                    const geometry = new THREE.SphereGeometry(0.015, 16, 16);
+                    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                    const sphere = new THREE.Mesh(geometry, material);
+                    sphere.position.copy(pos);
+                    scene.add(sphere);
+                    
+                    points.push(pos);
+                    spheres.push(sphere);
+                    updateLine();
+
                     if (navigator.vibrate) navigator.vibrate(50);
                 }
             };
 
-            // Listener de toque más robusto
-            const actionBtn = document.getElementById('action-btn');
-            actionBtn.addEventListener('pointerdown', handleAction);
-
-            document.getElementById('undo-btn').onclick = (e) => { e.preventDefault(); undoLastPoint(); };
-            document.getElementById('reset-btn').onclick = (e) => { e.preventDefault(); resetMeasurement(); };
+            document.getElementById('action-btn').addEventListener('pointerdown', addPointAction);
+            document.getElementById('undo-btn').onclick = () => {
+                if (points.length > 0) {
+                    points.pop();
+                    scene.remove(spheres.pop());
+                    updateLine();
+                }
+            };
+            document.getElementById('reset-btn').onclick = () => {
+                points = [];
+                spheres.forEach(s => scene.remove(s));
+                spheres = [];
+                if (line) scene.remove(line);
+                line = null;
+                document.getElementById('distance-text').innerText = "0.00 m";
+            };
 
             renderer.setAnimationLoop(render);
-        }
-
-        function addPoint(pos) {
-            const geometry = new THREE.SphereGeometry(0.015, 16, 16);
-            const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-            const sphere = new THREE.Mesh(geometry, material);
-            sphere.position.copy(pos);
-            scene.add(sphere);
-            
-            points.push(pos);
-            spheres.push(sphere);
-            updateLine();
-        }
-
-        function undoLastPoint() {
-            if (points.length > 0) {
-                points.pop();
-                scene.remove(spheres.pop());
-                updateLine();
-            }
-        }
-
-        function resetMeasurement() {
-            points = [];
-            spheres.forEach(s => scene.remove(s));
-            spheres = [];
-            if (line) scene.remove(line);
-            line = null;
-            document.getElementById('distance-text').innerText = "0.00 m";
         }
 
         function updateLine() {
             if (line) scene.remove(line);
             if (points.length >= 2) {
                 const geo = new THREE.BufferGeometry().setFromPoints(points);
-                const mat = new THREE.LineBasicMaterial({ color: #ffcc00, linewidth: 8 });
+                const mat = new THREE.LineBasicMaterial({ color: 0xffcc00, linewidth: 8 });
                 line = new THREE.Line(geo, mat);
                 scene.add(line);
             }
-            calculateDistance();
-        }
-
-        function calculateDistance() {
             let dist = 0;
             for (let i = 0; i < points.length - 1; i++) {
                 dist += points[i].distanceTo(points[i+1]);
@@ -301,22 +313,18 @@
 
                 if (hitTestSource) {
                     const results = frame.getHitTestResults(hitTestSource);
-                    const statusText = document.getElementById('status-text');
-                    const actionBtn = document.getElementById('action-btn');
+                    const status = document.getElementById('status-text');
 
                     if (results.length) {
                         const hit = results[0];
                         reticle.visible = true;
                         reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-                        
-                        statusText.innerText = "LISTO PARA MEDIR";
-                        statusText.style.color = "#00ff00";
-                        actionBtn.classList.remove('disabled');
+                        status.innerText = "LISTO PARA MEDIR";
+                        status.style.color = "#00ff00";
                     } else {
                         reticle.visible = false;
-                        statusText.innerText = "BUSCANDO SUELO...";
-                        statusText.style.color = "#ff4444";
-                        actionBtn.classList.add('disabled');
+                        status.innerText = "CALIBRANDO SUELO...";
+                        status.style.color = "#ff4444";
                     }
                 }
             }
