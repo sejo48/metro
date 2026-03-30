@@ -6,55 +6,71 @@
     <title>Medidor AR Pro - Jorge</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body {
+        /* IMPORTANTE: El fondo debe ser transparente para que se vea la cámara */
+        html, body {
             margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #000;
+            background-color: transparent !important;
+            font-family: 'Segoe UI', sans-serif;
             touch-action: none;
         }
 
-        /* Contenedor de la interfaz sobre la cámara */
+        /* Pantalla de inicio negra hasta que encienda la cámara */
+        #start-screen {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+            z-index: 1000;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
         #ui-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            display: none; /* Se activa al iniciar AR */
+            display: none;
             flex-direction: column;
             justify-content: space-between;
             pointer-events: none;
             z-index: 10;
         }
 
-        /* Mira central */
         #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border: 2px solid white;
             border-radius: 50%;
             pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         #crosshair::after {
             content: '';
-            width: 8px;
-            height: 8px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 6px;
+            height: 6px;
             background: #ffcc00;
             border-radius: 50%;
-            box-shadow: 0 0 10px #ffcc00;
         }
 
-        /* Panel de información superior */
         .info-panel {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(10px);
             margin: 20px;
             padding: 15px;
@@ -69,15 +85,7 @@
             color: #ffcc00;
             margin: 0;
         }
-        #status-text {
-            font-size: 0.8rem;
-            color: #ff4444;
-            text-transform: uppercase;
-            font-weight: bold;
-            margin-top: 5px;
-        }
 
-        /* Controles inferiores para el pulgar */
         .bottom-controls {
             display: flex;
             align-items: center;
@@ -85,12 +93,12 @@
             padding-bottom: env(safe-area-inset-bottom, 30px);
             padding-top: 20px;
             pointer-events: auto;
-            background: linear-gradient(transparent, rgba(0,0,0,0.9));
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
         }
 
         #action-btn {
-            width: 90px;
-            height: 90px;
+            width: 85px;
+            height: 85px;
             background: #ffcc00;
             border-radius: 50%;
             border: 5px solid white;
@@ -99,13 +107,11 @@
             justify-content: center;
             cursor: pointer;
             box-shadow: 0 5px 20px rgba(0,0,0,0.5);
-            transition: transform 0.1s;
         }
-        #action-btn:active { transform: scale(0.85); }
         #action-btn svg { width: 45px; height: 45px; fill: black; }
 
         .btn-side {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.5);
             width: 55px;
             height: 55px;
             border-radius: 50%;
@@ -113,64 +119,46 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid white;
         }
 
-        /* Pantalla de inicio personalizada */
-        #start-screen {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: #111;
-            z-index: 1000;
-            color: white;
-            text-align: center;
-            padding: 20px;
-        }
-
-        /* Ajuste para el botón que genera Three.js */
+        /* Estilo del botón oficial de AR */
         #ARButton {
-            position: static !important;
-            padding: 20px 50px !important;
-            border-radius: 40px !important;
+            position: relative !important;
+            bottom: auto !important;
+            left: auto !important;
+            margin-top: 20px;
+            padding: 20px 40px !important;
+            font-size: 1.2rem !important;
+            font-weight: bold !important;
             background: #ffcc00 !important;
             color: black !important;
-            font-weight: 900 !important;
-            font-size: 1.2rem !important;
+            border-radius: 50px !important;
             border: none !important;
-            cursor: pointer !important;
-            opacity: 1 !important;
-            box-shadow: 0 10px 25px rgba(255,204,0,0.3) !important;
+            box-shadow: 0 10px 20px rgba(255,204,0,0.4) !important;
         }
     </style>
 </head>
 <body>
 
     <div id="start-screen">
-        <h1 style="color: #ffcc00; font-size: 2.5rem; margin-bottom: 10px;">MEDIDOR AR</h1>
-        <p style="opacity: 0.8; margin-bottom: 40px;">Jorge, detecta el suelo y usa el botón <b>+</b></p>
-        <div id="button-container">
-            <!-- Aquí Three.js inyectará el botón oficial -->
-        </div>
-        <p id="error-msg" style="color: #ff4444; margin-top: 20px; font-weight: bold; display: none;">
-            Tu dispositivo no soporta Realidad Aumentada o necesitas usar HTTPS.
-        </p>
+        <h1 style="color: #ffcc00;">MEDIDOR AR</h1>
+        <p>Jorge, presiona abajo para encender la cámara.</p>
+        <div id="button-container"></div>
+        <p id="error-log" style="color: #ff4444; margin-top: 20px; font-size: 0.9rem; max-width: 80%;"></p>
     </div>
 
     <div id="ui-overlay">
         <div class="info-panel">
             <div id="distance-text">0.00 m</div>
-            <div id="status-text">CALIBRANDO...</div>
+            <div id="status-label" style="font-size: 0.8rem; color: #aaa;">MOVER MÓVIL PARA CALIBRAR</div>
         </div>
 
         <div id="crosshair"></div>
 
         <div class="bottom-controls">
             <div class="btn-side" id="undo-btn">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5M4 9h11a4 4 0 0 1 4 4v1"></path></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M9 14L4 9l5-5M4 9h11a4 4 0 0 1 4 4v1"></path></svg>
             </div>
             
             <div id="action-btn">
@@ -178,7 +166,7 @@
             </div>
 
             <div class="btn-side" id="reset-btn">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </div>
         </div>
     </div>
@@ -189,19 +177,15 @@
         let camera, scene, renderer, reticle;
         let hitTestSource = null;
         let hitTestSourceRequested = false;
-        
         let points = [];
         let spheres = [];
         let line = null;
 
         init();
 
-        async function init() {
+        function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-
-            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-            scene.add(light);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setPixelRatio(window.devicePixelRatio);
@@ -209,29 +193,30 @@
             renderer.xr.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // Crear botón de AR oficial
-            const arBtn = ARButton.createButton(renderer, { 
+            const overlay = document.getElementById('ui-overlay');
+            
+            // Botón oficial de AR con todos los requerimientos
+            const arButton = ARButton.createButton(renderer, { 
                 requiredFeatures: ['hit-test'],
                 optionalFeatures: ['dom-overlay'],
-                domOverlay: { root: document.getElementById('ui-overlay') }
+                domOverlay: { root: overlay }
             });
 
-            // Si Three.js no pudo crear el botón (no compatible), avisamos
-            if (arBtn.textContent.includes("NOT SUPPORTED") || arBtn.textContent.includes("NOT FOUND")) {
-                document.getElementById('error-msg').style.display = 'block';
-                document.getElementById('error-msg').innerText = arBtn.textContent;
-            }
+            document.getElementById('button-container').appendChild(arButton);
 
-            // Inyectamos el botón real en nuestra pantalla de inicio
-            arBtn.id = "ARButton";
-            arBtn.textContent = "EMPEZAR MEDICIÓN";
-            document.getElementById('button-container').appendChild(arBtn);
-
-            // Escuchar cuando el usuario entra a AR
+            // Detectar cuando inicia la sesión
             renderer.xr.addEventListener('sessionstart', () => {
                 document.getElementById('start-screen').style.display = 'none';
-                document.getElementById('ui-overlay').style.display = 'flex';
+                overlay.style.display = 'flex';
+                console.log("Cámara iniciada");
             });
+
+            renderer.xr.addEventListener('sessionend', () => {
+                location.reload(); // Si se cierra, recargar para limpiar
+            });
+
+            // Luz
+            scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
             // Retículo para el suelo
             reticle = new THREE.Mesh(
@@ -242,65 +227,67 @@
             reticle.visible = false;
             scene.add(reticle);
 
-            // Función para añadir puntos (Botón +)
-            const addPointAction = (e) => {
+            // Botón +
+            document.getElementById('action-btn').addEventListener('pointerdown', (e) => {
                 e.preventDefault();
                 if (reticle.visible) {
                     const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                    
-                    const geometry = new THREE.SphereGeometry(0.015, 16, 16);
-                    const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
-                    const sphere = new THREE.Mesh(geometry, material);
-                    sphere.position.copy(pos);
-                    scene.add(sphere);
-                    
-                    points.push(pos);
-                    spheres.push(sphere);
-                    updateLine();
-
+                    addPoint(pos);
                     if (navigator.vibrate) navigator.vibrate(50);
                 }
-            };
+            });
 
-            document.getElementById('action-btn').addEventListener('pointerdown', addPointAction);
-            document.getElementById('undo-btn').onclick = () => {
-                if (points.length > 0) {
-                    points.pop();
-                    scene.remove(spheres.pop());
-                    updateLine();
-                }
-            };
-            document.getElementById('reset-btn').onclick = () => {
-                points = [];
-                spheres.forEach(s => scene.remove(s));
-                spheres = [];
-                if (line) scene.remove(line);
-                line = null;
-                document.getElementById('distance-text').innerText = "0.00 m";
-            };
+            document.getElementById('undo-btn').onclick = undo;
+            document.getElementById('reset-btn').onclick = reset;
 
             renderer.setAnimationLoop(render);
+        }
+
+        function addPoint(pos) {
+            const sphere = new THREE.Mesh(
+                new THREE.SphereGeometry(0.015, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            sphere.position.copy(pos);
+            scene.add(sphere);
+            points.push(pos);
+            spheres.push(sphere);
+            updateLine();
+        }
+
+        function undo() {
+            if (points.length > 0) {
+                points.pop();
+                scene.remove(spheres.pop());
+                updateLine();
+            }
+        }
+
+        function reset() {
+            points = [];
+            spheres.forEach(s => scene.remove(s));
+            spheres = [];
+            if (line) scene.remove(line);
+            line = null;
+            document.getElementById('distance-text').innerText = "0.00 m";
         }
 
         function updateLine() {
             if (line) scene.remove(line);
             if (points.length >= 2) {
                 const geo = new THREE.BufferGeometry().setFromPoints(points);
-                const mat = new THREE.LineBasicMaterial({ color: 0xffcc00, linewidth: 8 });
-                line = new THREE.Line(geo, mat);
+                line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffcc00, linewidth: 10 }));
                 scene.add(line);
             }
             let dist = 0;
-            for (let i = 0; i < points.length - 1; i++) {
-                dist += points[i].distanceTo(points[i+1]);
-            }
+            for (let i = 0; i < points.length - 1; i++) dist += points[i].distanceTo(points[i+1]);
             document.getElementById('distance-text').innerText = dist.toFixed(2) + " m";
         }
 
         function render(timestamp, frame) {
             if (frame) {
-                const referenceSpace = renderer.xr.getReferenceSpace();
                 const session = renderer.xr.getSession();
+                const referenceSpace = renderer.xr.getReferenceSpace();
 
                 if (!hitTestSourceRequested) {
                     session.requestReferenceSpace('viewer').then(ref => {
@@ -313,18 +300,16 @@
 
                 if (hitTestSource) {
                     const results = frame.getHitTestResults(hitTestSource);
-                    const status = document.getElementById('status-text');
-
                     if (results.length) {
                         const hit = results[0];
                         reticle.visible = true;
                         reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-                        status.innerText = "LISTO PARA MEDIR";
-                        status.style.color = "#00ff00";
+                        document.getElementById('status-label').innerText = "LISTO PARA MEDIR";
+                        document.getElementById('status-label').style.color = "#00ff00";
                     } else {
                         reticle.visible = false;
-                        status.innerText = "CALIBRANDO SUELO...";
-                        status.style.color = "#ff4444";
+                        document.getElementById('status-label').innerText = "CALIBRANDO SUELO...";
+                        document.getElementById('status-label').style.color = "#ff4444";
                     }
                 }
             }
