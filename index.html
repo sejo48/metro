@@ -6,19 +6,23 @@
     <title>Medidor AR Pro - Jorge</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        /* IMPORTANTE: El fondo debe ser transparente para que se vea la cámara */
+        /* Forzamos transparencia absoluta para ver la cámara */
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
         html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden;
+            background: none !important;
             background-color: transparent !important;
-            font-family: 'Segoe UI', sans-serif;
-            touch-action: none;
+            overflow: hidden;
+            font-family: sans-serif;
         }
 
-        /* Pantalla de inicio negra hasta que encienda la cámara */
+        /* Pantalla de carga/inicio */
         #start-screen {
             position: fixed;
             inset: 0;
@@ -26,9 +30,9 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: #000;
-            z-index: 1000;
-            color: white;
+            background-color: #000;
+            color: #fff;
+            z-index: 2000;
             text-align: center;
             padding: 20px;
         }
@@ -44,16 +48,18 @@
             justify-content: space-between;
             pointer-events: none;
             z-index: 10;
+            background: none !important;
         }
 
+        /* Mira Central (Retículo) */
         #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 44px;
-            height: 44px;
-            border: 2px solid white;
+            width: 40px;
+            height: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             pointer-events: none;
         }
@@ -70,20 +76,18 @@
         }
 
         .info-panel {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.5);
             margin: 20px;
             padding: 15px;
-            border-radius: 18px;
+            border-radius: 15px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.2);
             pointer-events: auto;
+            color: white;
         }
         #distance-text {
             font-size: 2.5rem;
-            font-weight: 900;
+            font-weight: bold;
             color: #ffcc00;
-            margin: 0;
         }
 
         .bottom-controls {
@@ -91,14 +95,13 @@
             align-items: center;
             justify-content: space-evenly;
             padding-bottom: env(safe-area-inset-bottom, 30px);
-            padding-top: 20px;
             pointer-events: auto;
-            background: linear-gradient(transparent, rgba(0,0,0,0.8));
         }
 
+        /* Botón de Acción Principal (+) */
         #action-btn {
-            width: 85px;
-            height: 85px;
+            width: 90px;
+            height: 90px;
             background: #ffcc00;
             border-radius: 50%;
             border: 5px solid white;
@@ -106,36 +109,33 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
         }
-        #action-btn svg { width: 45px; height: 45px; fill: black; }
+        #action-btn svg { width: 50px; height: 50px; fill: black; }
 
         .btn-side {
             background: rgba(0, 0, 0, 0.5);
-            width: 55px;
-            height: 55px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
             border: 1px solid white;
         }
 
-        /* Estilo del botón oficial de AR */
+        /* Botón inyectado por Three.js */
         #ARButton {
             position: relative !important;
-            bottom: auto !important;
-            left: auto !important;
+            bottom: 0 !important;
+            left: 0 !important;
             margin-top: 20px;
-            padding: 20px 40px !important;
-            font-size: 1.2rem !important;
-            font-weight: bold !important;
+            padding: 15px 40px !important;
             background: #ffcc00 !important;
             color: black !important;
-            border-radius: 50px !important;
+            border-radius: 30px !important;
+            font-weight: bold !important;
             border: none !important;
-            box-shadow: 0 10px 20px rgba(255,204,0,0.4) !important;
         }
     </style>
 </head>
@@ -143,15 +143,15 @@
 
     <div id="start-screen">
         <h1 style="color: #ffcc00;">MEDIDOR AR</h1>
-        <p>Jorge, presiona abajo para encender la cámara.</p>
-        <div id="button-container"></div>
-        <p id="error-log" style="color: #ff4444; margin-top: 20px; font-size: 0.9rem; max-width: 80%;"></p>
+        <p>Jorge, presiona el botón amarillo para iniciar la cámara.</p>
+        <div id="btn-container"></div>
+        <p id="status-log" style="font-size: 0.8rem; margin-top: 20px; opacity: 0.6;"></p>
     </div>
 
     <div id="ui-overlay">
         <div class="info-panel">
             <div id="distance-text">0.00 m</div>
-            <div id="status-label" style="font-size: 0.8rem; color: #aaa;">MOVER MÓVIL PARA CALIBRAR</div>
+            <div id="status-msg" style="font-size: 0.8rem;">BUSCANDO SUELO...</div>
         </div>
 
         <div id="crosshair"></div>
@@ -194,31 +194,22 @@
             document.body.appendChild(renderer.domElement);
 
             const overlay = document.getElementById('ui-overlay');
-            
-            // Botón oficial de AR con todos los requerimientos
-            const arButton = ARButton.createButton(renderer, { 
+            const arBtn = ARButton.createButton(renderer, { 
                 requiredFeatures: ['hit-test'],
                 optionalFeatures: ['dom-overlay'],
                 domOverlay: { root: overlay }
             });
+            document.getElementById('btn-container').appendChild(arBtn);
 
-            document.getElementById('button-container').appendChild(arButton);
-
-            // Detectar cuando inicia la sesión
             renderer.xr.addEventListener('sessionstart', () => {
                 document.getElementById('start-screen').style.display = 'none';
                 overlay.style.display = 'flex';
-                console.log("Cámara iniciada");
             });
 
-            renderer.xr.addEventListener('sessionend', () => {
-                location.reload(); // Si se cierra, recargar para limpiar
-            });
-
-            // Luz
+            // Luz básica
             scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
-            // Retículo para el suelo
+            // Retículo para detectar el suelo
             reticle = new THREE.Mesh(
                 new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2),
                 new THREE.MeshBasicMaterial({ color: 0xffcc00 })
@@ -227,56 +218,49 @@
             reticle.visible = false;
             scene.add(reticle);
 
-            // Botón +
+            // Botón de Acción (+)
             document.getElementById('action-btn').addEventListener('pointerdown', (e) => {
                 e.preventDefault();
                 if (reticle.visible) {
                     const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                    addPoint(pos);
+                    const sphere = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.015, 16, 16),
+                        new THREE.MeshBasicMaterial({ color: 0xffffff })
+                    );
+                    sphere.position.copy(pos);
+                    scene.add(sphere);
+                    points.push(pos);
+                    spheres.push(sphere);
+                    updateLine();
                     if (navigator.vibrate) navigator.vibrate(50);
                 }
             });
 
-            document.getElementById('undo-btn').onclick = undo;
-            document.getElementById('reset-btn').onclick = reset;
+            document.getElementById('undo-btn').onclick = () => {
+                if (points.length > 0) {
+                    points.pop();
+                    scene.remove(spheres.pop());
+                    updateLine();
+                }
+            };
+
+            document.getElementById('reset-btn').onclick = () => {
+                points = [];
+                spheres.forEach(s => scene.remove(s));
+                spheres = [];
+                if (line) scene.remove(line);
+                line = null;
+                document.getElementById('distance-text').innerText = "0.00 m";
+            };
 
             renderer.setAnimationLoop(render);
-        }
-
-        function addPoint(pos) {
-            const sphere = new THREE.Mesh(
-                new THREE.SphereGeometry(0.015, 16, 16),
-                new THREE.MeshBasicMaterial({ color: 0xffffff })
-            );
-            sphere.position.copy(pos);
-            scene.add(sphere);
-            points.push(pos);
-            spheres.push(sphere);
-            updateLine();
-        }
-
-        function undo() {
-            if (points.length > 0) {
-                points.pop();
-                scene.remove(spheres.pop());
-                updateLine();
-            }
-        }
-
-        function reset() {
-            points = [];
-            spheres.forEach(s => scene.remove(s));
-            spheres = [];
-            if (line) scene.remove(line);
-            line = null;
-            document.getElementById('distance-text').innerText = "0.00 m";
         }
 
         function updateLine() {
             if (line) scene.remove(line);
             if (points.length >= 2) {
                 const geo = new THREE.BufferGeometry().setFromPoints(points);
-                line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffcc00, linewidth: 10 }));
+                line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffcc00, linewidth: 5 }));
                 scene.add(line);
             }
             let dist = 0;
@@ -300,16 +284,17 @@
 
                 if (hitTestSource) {
                     const results = frame.getHitTestResults(hitTestSource);
+                    const msg = document.getElementById('status-msg');
                     if (results.length) {
                         const hit = results[0];
                         reticle.visible = true;
                         reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
-                        document.getElementById('status-label').innerText = "LISTO PARA MEDIR";
-                        document.getElementById('status-label').style.color = "#00ff00";
+                        msg.innerText = "LISTO PARA MEDIR";
+                        msg.style.color = "#00ff00";
                     } else {
                         reticle.visible = false;
-                        document.getElementById('status-label').innerText = "CALIBRANDO SUELO...";
-                        document.getElementById('status-label').style.color = "#ff4444";
+                        msg.innerText = "CALIBRANDO SUELO...";
+                        msg.style.color = "#ff4444";
                     }
                 }
             }
