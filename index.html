@@ -24,6 +24,8 @@
             justify-content: center !important;
             align-items: center !important;
         }
+
+        .scroll-hide::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
@@ -33,18 +35,18 @@
         <div class="mt-10">
             <div class="mb-6 w-20 h-20 bg-cyan-600 rounded-3xl mx-auto flex items-center justify-center shadow-[0_0_50px_rgba(8,145,178,0.5)]">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
             </div>
-            <h1 class="text-4xl font-black tracking-tighter uppercase italic text-white leading-none">MEDIDOR <span class="text-cyan-400">LIVE</span></h1>
+            <h1 class="text-4xl font-black tracking-tighter uppercase italic text-white leading-none">MEDIDOR <span class="text-cyan-400">HISTORIAL</span></h1>
             <p class="text-slate-400 text-xs tracking-widest mt-2 uppercase font-bold opacity-70 italic">Jorge Hernández - Edición 2026</p>
         </div>
 
         <div id="ar-button-container" class="w-full flex justify-center px-4"></div>
 
-        <div class="opacity-80">
-            <p class="text-[10px] tracking-[0.4em] text-cyan-500 font-black mb-1 uppercase">Camine y Mida en Tiempo Real</p>
-            <p class="text-sm font-medium tracking-tight text-white/60 italic">Presione Iniciar para comenzar</p>
+        <div class="opacity-80 text-center">
+            <p class="text-[10px] tracking-[0.4em] text-cyan-500 font-black mb-1 uppercase">Guarda cada medida que realices</p>
+            <p class="text-sm font-medium tracking-tight text-white/60 italic leading-tight">Toque para fijar puntos y acumular distancia</p>
         </div>
     </div>
 
@@ -52,14 +54,26 @@
     <div id="ui-layer" class="fixed inset-0 pointer-events-none hidden flex-col justify-between p-6 z-40">
         
         <!-- Panel de Medida Principal -->
-        <div class="flex flex-col items-center">
-            <div class="glass p-8 rounded-[3rem] text-center shadow-2xl neon-border min-w-[280px]">
-                <div class="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mb-2">Distancia Actual</div>
-                <div id="distance-display" class="text-7xl font-black text-white tracking-tighter italic leading-none">0.00 <span class="text-2xl not-italic font-medium text-cyan-400">m</span></div>
-                
-                <div id="status-pill" class="mt-4 bg-cyan-500/10 border border-cyan-500/20 py-1 px-4 rounded-full inline-block">
-                    <span id="status-text" class="text-[9px] font-black text-cyan-400 uppercase tracking-[0.2em]">Ponga el primer punto</span>
+        <div class="flex flex-col items-center gap-4">
+            <div class="glass p-6 rounded-[2.5rem] text-center shadow-2xl neon-border min-w-[300px]">
+                <div class="flex justify-between items-center px-2 mb-2 border-b border-white/5 pb-2">
+                    <div class="text-left">
+                        <p class="text-[8px] text-slate-500 font-black uppercase tracking-widest">Total Acumulado</p>
+                        <p id="total-display" class="text-xl font-black text-cyan-400 leading-none">0.00 m</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[8px] text-slate-500 font-black uppercase tracking-widest">Puntos</p>
+                        <p id="points-count" class="text-xl font-black text-white leading-none">0</p>
+                    </div>
                 </div>
+
+                <div class="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] mb-1">Tramo en Vivo</div>
+                <div id="distance-display" class="text-6xl font-black text-white tracking-tighter italic leading-none">0.00 <span class="text-xl not-italic font-medium text-cyan-400">m</span></div>
+            </div>
+
+            <!-- Historial de Tramos -->
+            <div id="history-container" class="w-full max-w-[280px] max-h-32 overflow-y-auto scroll-hide flex flex-col gap-1 pointer-events-auto">
+                <!-- Los tramos se inyectarán aquí -->
             </div>
         </div>
 
@@ -98,14 +112,17 @@
         
         let points = [];
         let markers = [];
+        let historySegments = [];
         let mainLine = null;
         let isHeightMode = false;
         let basePoint = null;
 
         const distanceDisplay = document.getElementById('distance-display');
+        const totalDisplay = document.getElementById('total-display');
+        const pointsCount = document.getElementById('points-count');
+        const historyContainer = document.getElementById('history-container');
         const uiLayer = document.getElementById('ui-layer');
         const startScreen = document.getElementById('start-screen');
-        const statusText = document.getElementById('status-text');
         const heightBtn = document.getElementById('height-btn');
 
         async function init() {
@@ -150,7 +167,6 @@
 
             window.addEventListener('click', (ev) => {
                 if (!reticle.visible || ev.target.closest('button')) return;
-                
                 const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
                 
                 if (isHeightMode) {
@@ -163,13 +179,8 @@
             heightBtn.addEventListener('click', () => {
                 isHeightMode = !isHeightMode;
                 clearMeasurements();
-                if (isHeightMode) {
-                    heightBtn.classList.add('bg-yellow-500/20', 'border-yellow-500');
-                    statusText.innerText = "Modo Altura: Fije la base";
-                } else {
-                    heightBtn.classList.remove('bg-yellow-500/20', 'border-yellow-500');
-                    statusText.innerText = "Modo Libre: Ponga el inicio";
-                }
+                if (isHeightMode) heightBtn.classList.add('bg-yellow-500/20', 'border-yellow-500');
+                else heightBtn.classList.remove('bg-yellow-500/20', 'border-yellow-500');
             });
 
             document.getElementById('clear-btn').addEventListener('click', () => location.reload());
@@ -178,6 +189,14 @@
         }
 
         function handleNormalModeClick(pos) {
+            // Si ya hay un punto previo, guardamos el tramo en el historial
+            if (points.length > 0) {
+                const dist = points[points.length - 1].distanceTo(pos);
+                historySegments.push(dist);
+                addHistoryItem(dist, historySegments.length);
+                updateTotal();
+            }
+
             const marker = new THREE.Mesh(
                 new THREE.SphereGeometry(0.012, 16, 16),
                 new THREE.MeshBasicMaterial({ color: points.length === 0 ? 0x22c55e : 0x06b6d4 })
@@ -187,39 +206,46 @@
             markers.push(marker);
             points.push(pos);
             
+            pointsCount.innerText = points.length;
             updateLine();
-            statusText.innerText = points.length === 1 ? "Camine para medir" : "Medida fijada";
             
             if (navigator.vibrate) navigator.vibrate(40);
+        }
+
+        function addHistoryItem(dist, index) {
+            const item = document.createElement('div');
+            item.className = 'glass px-4 py-2 rounded-xl flex justify-between items-center border border-white/5';
+            item.innerHTML = `
+                <span class="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Tramo ${index}</span>
+                <span class="text-sm font-black text-white italic">${dist.toFixed(2)} m</span>
+            `;
+            historyContainer.prepend(item); // Poner el más reciente arriba
+        }
+
+        function updateTotal() {
+            const total = historySegments.reduce((a, b) => a + b, 0);
+            totalDisplay.innerText = total.toFixed(2) + " m";
         }
 
         function handleHeightModeClick(pos) {
             if (!basePoint) {
                 basePoint = pos.clone();
-                const marker = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.012, 16, 16),
-                    new THREE.MeshBasicMaterial({ color: 0x22c55e })
-                );
-                marker.position.copy(basePoint);
-                scene.add(marker);
-                markers.push(marker);
-                statusText.innerText = "Suba el móvil";
+                addMarker(basePoint, 0x22c55e);
             } else {
                 const h = Math.abs(camera.position.y - basePoint.y);
                 const top = new THREE.Vector3(basePoint.x, basePoint.y + h, basePoint.z);
-                const marker = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.012, 16, 16),
-                    new THREE.MeshBasicMaterial({ color: 0xeab308 })
-                );
-                marker.position.copy(top);
-                scene.add(marker);
-                markers.push(marker);
+                addMarker(top, 0xeab308);
                 points.push(basePoint, top);
                 updateLine();
-                statusText.innerText = "Altura fijada";
                 basePoint = null;
-                if (navigator.vibrate) navigator.vibrate(50);
             }
+        }
+
+        function addMarker(pos, color) {
+            const marker = new THREE.Mesh(new THREE.SphereGeometry(0.012, 16, 16), new THREE.MeshBasicMaterial({ color }));
+            marker.position.copy(pos);
+            scene.add(marker);
+            markers.push(marker);
         }
 
         function updateLine() {
@@ -234,8 +260,11 @@
         function clearMeasurements() {
             markers.forEach(m => { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
             if (mainLine) scene.remove(mainLine);
-            markers = []; points = []; mainLine = null; basePoint = null;
+            markers = []; points = []; historySegments = []; mainLine = null; basePoint = null;
             distanceDisplay.innerHTML = `0.00 <span class="text-2xl">m</span>`;
+            totalDisplay.innerText = "0.00 m";
+            pointsCount.innerText = "0";
+            historyContainer.innerHTML = "";
         }
 
         function render(timestamp, frame) {
@@ -253,7 +282,6 @@
                     if (hits.length > 0) {
                         reticle.visible = true;
                         reticle.matrix.fromArray(hits[0].getPose(refSpace).transform.matrix);
-                        
                         if (points.length > 0 && !isHeightMode) {
                             const currentPos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
                             const dist = points[points.length - 1].distanceTo(currentPos);
@@ -263,7 +291,6 @@
                         reticle.visible = false;
                     }
                 }
-
                 if (isHeightMode && basePoint) {
                     const currentH = Math.abs(camera.position.y - basePoint.y);
                     distanceDisplay.innerHTML = `${currentH.toFixed(2)} <span class="text-2xl not-italic font-medium text-cyan-400">m</span>`;
