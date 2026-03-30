@@ -27,49 +27,52 @@
             z-index: 10;
         }
 
+        /* Mira Central Mejorada */
         #crosshair {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 44px;
-            height: 44px;
-            border: 2px solid rgba(255, 255, 255, 0.5);
+            width: 40px;
+            height: 40px;
+            border: 2px solid white;
             border-radius: 50%;
+            pointer-events: none;
             display: flex;
             align-items: center;
             justify-content: center;
-            pointer-events: none;
         }
         #crosshair::after {
             content: '';
-            width: 6px;
-            height: 6px;
+            width: 8px;
+            height: 8px;
             background: #ffcc00;
             border-radius: 50%;
+            box-shadow: 0 0 10px #ffcc00;
         }
 
         .info-panel {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            margin: 15px;
-            padding: 12px;
-            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            margin: 20px;
+            padding: 15px;
+            border-radius: 18px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             pointer-events: auto;
         }
         #distance-text {
             font-size: 2.5rem;
-            font-weight: 800;
+            font-weight: 900;
             color: #ffcc00;
             margin: 0;
         }
         #status-text {
-            font-size: 0.7rem;
-            color: #aaa;
+            font-size: 0.75rem;
+            color: #ccc;
             text-transform: uppercase;
-            margin-top: 4px;
+            letter-spacing: 1px;
+            margin-top: 5px;
         }
 
         .bottom-controls {
@@ -82,34 +85,42 @@
             background: linear-gradient(transparent, rgba(0,0,0,0.9));
         }
 
+        /* Botón de Acción con efecto de pulso */
         #action-btn {
-            width: 90px;
-            height: 90px;
+            width: 95px;
+            height: 95px;
             background: #ffcc00;
             border-radius: 50%;
-            border: 5px solid #fff;
+            border: 6px solid #fff;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+            transition: all 0.1s;
         }
-        #action-btn:active { transform: scale(0.9); }
-        #action-btn.disabled { opacity: 0.3; filter: grayscale(1); }
-        #action-btn svg { width: 45px; height: 45px; fill: black; }
+        #action-btn:active {
+            transform: scale(0.85);
+            background: #e6b800;
+        }
+        #action-btn.disabled {
+            opacity: 0.2;
+            filter: grayscale(1);
+            pointer-events: none;
+        }
+        #action-btn svg { width: 50px; height: 50px; fill: black; }
 
         .btn-side {
-            background: rgba(40, 40, 40, 0.9);
+            background: rgba(255, 255, 255, 0.1);
             color: white;
-            width: 55px;
-            height: 55px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
         }
 
         #start-screen {
@@ -122,38 +133,38 @@
             background: #000;
             z-index: 1000;
             text-align: center;
+            padding: 30px;
             color: white;
-            padding: 20px;
         }
     </style>
 </head>
 <body>
 
     <div id="start-screen">
-        <h1 style="color: #ffcc00; font-size: 2.5rem;">MEDIDOR AR</h1>
-        <p style="margin-bottom: 40px; opacity: 0.8;">Jorge, apunta al suelo y muévete despacio para detectar superficies.</p>
-        <button id="ar-launch-btn" style="padding: 20px 60px; border-radius: 40px; border: none; background: #ffcc00; font-weight: bold; font-size: 1.2rem; color: black; cursor: pointer;">INICIAR</button>
+        <h1 style="color: #ffcc00; font-size: 2.8rem; margin: 0;">MEDIDOR AR</h1>
+        <p style="opacity: 0.8; margin: 20px 0 40px;">Jorge, mueve el móvil suavemente en círculos para detectar el suelo.</p>
+        <button id="ar-launch-btn" style="padding: 22px 70px; border-radius: 50px; border: none; background: #ffcc00; font-weight: 900; font-size: 1.3rem; color: black; cursor: pointer; box-shadow: 0 10px 30px rgba(255,204,0,0.3);">EMPEZAR</button>
     </div>
 
     <div id="ui-overlay" style="display: none;">
         <div class="info-panel">
             <div id="distance-text">0.00 m</div>
-            <div id="status-text">Buscando superficie...</div>
+            <div id="status-text">Buscando suelo...</div>
         </div>
 
         <div id="crosshair"></div>
 
         <div class="bottom-controls">
             <div class="btn-side" id="undo-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5M4 9h11a4 4 0 0 1 4 4v1"></path></svg>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5M4 9h11a4 4 0 0 1 4 4v1"></path></svg>
             </div>
             
-            <div id="action-btn" class="disabled">
+            <div id="action-btn">
                 <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
             </div>
 
             <div class="btn-side" id="reset-btn">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
             </div>
         </div>
     </div>
@@ -197,7 +208,7 @@
                 overlay.style.display = 'flex';
             };
 
-            // Retículo para el hit-test (suelo)
+            // Retículo (indicador visual en el suelo)
             reticle = new THREE.Mesh(
                 new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2),
                 new THREE.MeshBasicMaterial({ color: 0xffcc00 })
@@ -206,20 +217,22 @@
             reticle.visible = false;
             scene.add(reticle);
 
-            // EVENTO PRINCIPAL: Botón +
-            const actionBtn = document.getElementById('action-btn');
-            actionBtn.addEventListener('pointerdown', (e) => {
-                e.preventDefault();
+            // FUNCIÓN PARA AÑADIR PUNTO
+            const handleAction = (e) => {
+                if (e) e.preventDefault();
                 if (reticle.visible) {
                     const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
                     addPoint(pos);
-                    // Feedback táctil
-                    if (navigator.vibrate) navigator.vibrate(40);
+                    if (navigator.vibrate) navigator.vibrate(50);
                 }
-            });
+            };
 
-            document.getElementById('undo-btn').onclick = undoLastPoint;
-            document.getElementById('reset-btn').onclick = resetMeasurement;
+            // Listener de toque más robusto
+            const actionBtn = document.getElementById('action-btn');
+            actionBtn.addEventListener('pointerdown', handleAction);
+
+            document.getElementById('undo-btn').onclick = (e) => { e.preventDefault(); undoLastPoint(); };
+            document.getElementById('reset-btn').onclick = (e) => { e.preventDefault(); resetMeasurement(); };
 
             renderer.setAnimationLoop(render);
         }
@@ -257,7 +270,7 @@
             if (line) scene.remove(line);
             if (points.length >= 2) {
                 const geo = new THREE.BufferGeometry().setFromPoints(points);
-                const mat = new THREE.LineBasicMaterial({ color: 0xffcc00, linewidth: 6 });
+                const mat = new THREE.LineBasicMaterial({ color: #ffcc00, linewidth: 8 });
                 line = new THREE.Line(geo, mat);
                 scene.add(line);
             }
@@ -296,13 +309,13 @@
                         reticle.visible = true;
                         reticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
                         
-                        statusText.innerText = "Listo para medir";
-                        statusText.style.color = "#ffcc00";
+                        statusText.innerText = "LISTO PARA MEDIR";
+                        statusText.style.color = "#00ff00";
                         actionBtn.classList.remove('disabled');
                     } else {
                         reticle.visible = false;
-                        statusText.innerText = "Buscando superficie...";
-                        statusText.style.color = "#aaa";
+                        statusText.innerText = "BUSCANDO SUELO...";
+                        statusText.style.color = "#ff4444";
                         actionBtn.classList.add('disabled');
                     }
                 }
