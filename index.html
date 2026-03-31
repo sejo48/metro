@@ -26,18 +26,25 @@
         }
 
         .scroll-hide::-webkit-scrollbar { display: none; }
+        
+        /* Estilo para el logo */
+        .app-logo {
+            width: 150px;
+            height: 150px;
+            border-radius: 2rem;
+            box-shadow: 0 0 30px rgba(6, 182, 212, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 <body>
 
-    <!-- Pantalla de Inicio -->
-    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-between py-16 px-6 bg-slate-950 text-white text-center">
-        <div class="mt-10">
-            <div class="mb-6 w-20 h-20 bg-cyan-600 rounded-3xl mx-auto flex items-center justify-center shadow-[0_0_50px_rgba(8,145,178,0.5)]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-            </div>
+    <!-- Pantalla de Inicio con Logotipo -->
+    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-between py-12 px-6 bg-slate-950 text-white text-center">
+        <div class="mt-8 flex flex-col items-center">
+            <!-- Integración del Logotipo -->
+            <img src="http://googleusercontent.com/image_generation_content/0" alt="Logo Medidor AR Pro" class="app-logo mb-6">
+            
             <h1 class="text-4xl font-black tracking-tighter uppercase italic text-white leading-none">MEDIDOR AR <span class="text-cyan-400">PRO</span></h1>
             <p class="text-slate-400 text-xs tracking-widest mt-2 uppercase font-bold opacity-70 italic">Jorge Hernández - Edición 2026</p>
         </div>
