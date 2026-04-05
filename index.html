@@ -6,165 +6,124 @@
     <title>Medidor AR Pro - Jorge Hernández</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #020617; font-family: 'Inter', system-ui, sans-serif; }
-        canvas { display: block; }
-        .glass {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
+        body { margin: 0; overflow: hidden; background-color: #020617; font-family: system-ui, sans-serif; color: white; }
+        .glass { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-start { 
+            background: #0891b2; 
+            padding: 1.5rem; 
+            border-radius: 1.5rem; 
+            font-weight: 900; 
+            width: 100%; 
+            box-shadow: 0 10px 30px rgba(6, 182, 212, 0.4); 
+            transition: all 0.2s;
         }
-        .app-logo {
-            width: 160px;
-            height: 160px;
-            border-radius: 2.5rem;
-            box-shadow: 0 20px 50px rgba(6, 182, 212, 0.4);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            object-fit: cover;
-        }
-        .scroll-hide::-webkit-scrollbar { display: none; }
-        
-        /* Estilos forzados para el botón de AR */
-        #ar-button-container {
-            display: flex;
-            justify-content: center;
-            width: 100%;
-            min-height: 60px;
-        }
-
-        #ar-button-container button {
-            position: static !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            background: #0891b2 !important;
-            color: white !important;
-            font-weight: 900 !important;
-            padding: 1.2rem 2.5rem !important;
-            border-radius: 9999px !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.15em !important;
-            font-size: 0.75rem !important;
-            border: none !important;
-            cursor: pointer !important;
-            box-shadow: 0 10px 30px rgba(6, 182, 212, 0.5) !important;
-            transition: transform 0.2s ease !important;
-            min-width: 200px !important;
-        }
-        #ar-button-container button:active { transform: scale(0.95) !important; }
+        .btn-start:active { transform: scale(0.95); background: #0e7490; }
+        .status-card { padding: 1rem; border-radius: 1rem; margin-bottom: 1rem; font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
-    <!-- Pantalla de Bienvenida -->
-    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-between py-16 px-8 bg-slate-950 text-white">
-        <div class="flex flex-col items-center">
+    <!-- PANTALLA DE DIAGNÓSTICO -->
+    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-between py-12 px-8 bg-slate-950">
+        <div class="text-center">
             <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj3-Z5UfmFQ8DyLGnUpruMPE4YJqcz15-vCkU3ygPmcE8odpiUzedzokhsxUpt9upGII3iAHPlf5eUAi68Q5aaJl0c0962hvuCVjVdvCteGYslw-pn7NfBN01136WRzhDHGybDTnIR9c8N1JCmQp4OzlFsce1rZup9OJ0uBlgABsYIQaeRCnq6VkbF9KHU/s320/WhatsApp%20Image%202026-03-30%20at%202.54.38%20PM%20(1).jpeg" 
-                 alt="Jorge Hernández Logo" 
-                 class="app-logo mb-8">
-            <h1 class="text-4xl font-black italic tracking-tighter uppercase leading-none text-center">MEDIDOR AR <span class="text-cyan-400">PRO</span></h1>
-            <p class="text-slate-500 text-[10px] tracking-[0.5em] mt-4 uppercase font-bold opacity-80">Jorge Hernández &bull; 2026</p>
+                 class="w-32 h-32 rounded-3xl mx-auto mb-6 shadow-2xl border border-white/10">
+            <h1 class="text-3xl font-black italic uppercase">MEDIDOR AR <span class="text-cyan-400">PRO</span></h1>
+            <p class="text-slate-500 text-[10px] tracking-widest mt-2 uppercase font-bold">Jorge Hernández &bull; Edición 2026</p>
         </div>
 
-        <!-- Contenedor del Botón AR -->
-        <div id="ar-button-container">
-            <p id="loading-msg" class="text-xs text-cyan-500 animate-pulse font-bold tracking-widest uppercase">Cargando Sensores...</p>
+        <div class="w-full max-w-xs">
+            <!-- PANEL DE ESTADO -->
+            <div id="check-list" class="space-y-2 mb-6">
+                <div id="check-https" class="status-card glass border-yellow-500/20">🔒 Conexión Segura: <span>Verificando...</span></div>
+                <div id="check-ar" class="status-card glass border-yellow-500/20">📱 Sensor AR: <span>Verificando...</span></div>
+            </div>
+
+            <button id="main-action" class="btn-start uppercase tracking-widest">Iniciar Cámara</button>
+            
+            <!-- MENSAJE DE ERROR CRÍTICO -->
+            <div id="error-box" class="hidden mt-4 p-4 bg-red-950/50 border border-red-500/50 rounded-xl text-red-200 text-xs text-center">
+                <p id="error-text"></p>
+            </div>
         </div>
 
-        <div class="text-center opacity-60 max-w-xs">
-            <p class="text-[9px] tracking-widest text-cyan-500 font-bold uppercase mb-2">Ingeniería de Precisión</p>
-            <p class="text-xs text-slate-400">Si el botón no aparece, asegúrate de usar Chrome o Samsung Internet en un dispositivo compatible.</p>
-        </div>
+        <p class="text-[9px] opacity-40 text-center uppercase font-bold">Debe abrir este link en Chrome (Android) o Safari (iOS)</p>
     </div>
 
-    <!-- UI de Medición Activa -->
+    <!-- INTERFAZ DE MEDICIÓN -->
     <div id="ui-layer" class="fixed inset-0 pointer-events-none hidden flex-col justify-between p-6 z-40">
-        <div class="flex flex-col items-center gap-4">
-            <div class="glass w-full max-w-sm p-5 rounded-[2rem] shadow-2xl">
-                <div class="flex justify-between items-start mb-4 px-2">
-                    <div class="flex flex-col">
-                        <span class="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-1">Acumulado</span>
-                        <span id="total-display" class="text-2xl font-black text-white italic">0.00 m</span>
-                    </div>
-                    <div class="flex flex-col items-end">
-                        <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Nodos</span>
-                        <span id="points-count" class="text-2xl font-black text-white">0</span>
-                    </div>
-                </div>
-                
-                <div class="bg-white/5 rounded-2xl p-4 text-center">
-                    <span id="mode-label" class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-1 block">Distancia Lineal</span>
-                    <div id="distance-display" class="text-5xl font-black text-white tracking-tighter italic">
-                        0.00<span class="text-lg not-italic font-medium text-cyan-400 ml-1">m</span>
-                    </div>
-                </div>
-            </div>
-
-            <div id="history-container" class="w-full max-w-[280px] max-h-32 overflow-y-auto scroll-hide flex flex-col gap-1.5 pointer-events-auto"></div>
-        </div>
-
-        <!-- Mira -->
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div class="relative w-12 h-12 flex items-center justify-center">
-                <div class="absolute inset-0 border border-white/20 rounded-full animate-pulse"></div>
-                <div class="w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee]"></div>
-                <div class="absolute w-6 h-[1px] bg-white/40"></div>
-                <div class="absolute h-6 w-[1px] bg-white/40"></div>
+        <div class="glass p-6 rounded-[2.5rem] w-full max-w-sm mx-auto text-center border-cyan-500/20 shadow-2xl">
+            <div id="dist-display" class="text-6xl font-black italic">0.00<span class="text-xl text-cyan-400 ml-1">m</span></div>
+            <div class="flex justify-between mt-4 text-[10px] uppercase font-black text-slate-500 border-t border-white/5 pt-4">
+                <span>Puntos: <b id="pts-val" class="text-white">0</b></span>
+                <span>Total: <b id="total-val" class="text-white">0.00 m</b></span>
             </div>
         </div>
 
-        <!-- Controles -->
-        <div class="flex items-end gap-3 pointer-events-auto w-full max-w-sm mx-auto">
-            <button id="undo-btn" class="glass w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-transform text-slate-300">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
-            </button>
-            
-            <button id="height-btn" class="glass flex-1 h-16 rounded-[1.5rem] flex items-center justify-center gap-3 active:scale-95 transition-all">
-                <svg id="height-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                </svg>
-                <span class="text-[10px] font-black uppercase tracking-widest text-white">Modo Altura</span>
-            </button>
-
-            <button id="clear-btn" class="glass w-16 h-16 rounded-2xl flex items-center justify-center active:scale-90 transition-transform text-red-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-            </button>
+        <div class="flex gap-3 pointer-events-auto w-full max-w-sm mx-auto">
+            <button id="btn-undo" class="glass p-5 rounded-2xl active:scale-90 text-slate-400 font-bold uppercase text-[10px]">Deshacer</button>
+            <button id="btn-height" class="glass flex-1 py-5 rounded-2xl font-black text-[10px] uppercase text-white border-yellow-500/20">Modo Altura</button>
+            <button onclick="location.reload()" class="glass p-5 rounded-2xl text-red-500 font-bold uppercase text-[10px]">Reset</button>
         </div>
     </div>
 
     <script type="module">
         import * as THREE from 'https://cdn.skypack.dev/three@0.128.0';
-        import { ARButton } from 'https://cdn.skypack.dev/three@0.128.0/examples/jsm/webxr/ARButton.js';
 
-        let camera, scene, renderer, reticle;
-        let hitTestSource = null;
-        let hitTestSourceRequested = false;
-        
-        let points = [];
-        let markers = [];
-        let historySegments = [];
-        let mainLine = null;
-        
-        let isHeightMode = false;
-        let basePoint = null;
+        let renderer, scene, camera, reticle, hitTestSource = null;
+        let points = [], markers = [], history = [], isHeight = false, basePoint = null;
 
         const ui = {
-            distance: document.getElementById('distance-display'),
-            total: document.getElementById('total-display'),
-            points: document.getElementById('points-count'),
-            history: document.getElementById('history-container'),
-            uiLayer: document.getElementById('ui-layer'),
-            startScreen: document.getElementById('start-screen'),
-            heightBtn: document.getElementById('height-btn'),
-            modeLabel: document.getElementById('mode-label'),
-            undoBtn: document.getElementById('undo-btn'),
-            arContainer: document.getElementById('ar-button-container'),
-            loadingMsg: document.getElementById('loading-msg')
+            screen: document.getElementById('start-screen'),
+            work: document.getElementById('ui-layer'),
+            btn: document.getElementById('main-action'),
+            error: document.getElementById('error-box'),
+            errorText: document.getElementById('error-text'),
+            checkHttps: document.getElementById('check-https'),
+            checkAr: document.getElementById('check-ar')
         };
 
-        function init() {
+        // 1. Diagnóstico inicial
+        async function runDiagnostics() {
+            const isHttps = window.isSecureContext;
+            ui.checkHttps.querySelector('span').innerText = isHttps ? "✅ OK" : "❌ NO SEGURA";
+            ui.checkHttps.classList.replace('border-yellow-500/20', isHttps ? 'border-green-500/30' : 'border-red-500/40');
+
+            const hasAr = 'xr' in navigator && await navigator.xr.isSessionSupported('immersive-ar');
+            ui.checkAr.querySelector('span').innerText = hasAr ? "✅ LISTO" : "❌ NO SOPORTADO";
+            ui.checkAr.classList.replace('border-yellow-500/20', hasAr ? 'border-green-500/30' : 'border-red-500/40');
+
+            if (!isHttps) {
+                showError("Estás en una conexión 'http'. La cámara AR requiere 'https' (candado de seguridad).");
+            } else if (!hasAr) {
+                showError("Tu móvil o navegador no soporta Realidad Aumentada. Usa Google Chrome.");
+            }
+        }
+
+        function showError(msg) {
+            ui.error.classList.remove('hidden');
+            ui.errorText.innerText = msg;
+        }
+
+        // 2. Intentar iniciar AR
+        async function startAR() {
+            try {
+                const session = await navigator.xr.requestSession('immersive-ar', {
+                    requiredFeatures: ['hit-test'],
+                    optionalFeatures: ['dom-overlay'],
+                    domOverlay: { root: document.body }
+                });
+                
+                ui.screen.style.display = 'none';
+                ui.work.style.display = 'flex';
+                
+                setupScene(session);
+            } catch (e) {
+                showError("Error al abrir cámara: " + e.message + ". Asegúrate de dar permiso de cámara.");
+            }
+        }
+
+        function setupScene(session) {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
             
@@ -174,176 +133,103 @@
             renderer.xr.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // Generar el botón AR directamente
-            const button = ARButton.createButton(renderer, { 
-                requiredFeatures: ['hit-test'],
-                optionalFeatures: ['dom-overlay'],
-                domOverlay: { root: document.body }
-            });
-            
-            // Reemplazar mensaje de carga por el botón
-            ui.arContainer.innerHTML = '';
-            ui.arContainer.appendChild(button);
+            renderer.xr.setSession(session);
+            scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
-            scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.5));
-
-            reticle = new THREE.Group();
-            reticle.add(
-                new THREE.Mesh(new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x22d3ee })),
-                new THREE.Mesh(new THREE.SphereGeometry(0.005, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }))
+            reticle = new THREE.Mesh(
+                new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI/2),
+                new THREE.MeshBasicMaterial({ color: 0x22d3ee })
             );
             reticle.matrixAutoUpdate = false;
             reticle.visible = false;
             scene.add(reticle);
 
-            renderer.xr.addEventListener('sessionstart', () => {
-                ui.startScreen.style.display = 'none';
-                ui.uiLayer.style.display = 'flex';
-            });
-
-            window.addEventListener('click', (ev) => {
-                if (!reticle.visible || ev.target.closest('button')) return;
+            window.addEventListener('click', (e) => {
+                if (!reticle.visible || e.target.closest('button')) return;
                 const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                if (isHeightMode) handleHeightModeClick(pos);
-                else handleNormalModeClick(pos);
-                vibrate(50);
+                isHeight ? doHeight(pos) : doLine(pos);
             });
-
-            ui.heightBtn.addEventListener('click', () => {
-                isHeightMode = !isHeightMode;
-                clearMeasurements();
-                ui.heightBtn.classList.toggle('bg-yellow-500/10');
-                ui.heightBtn.classList.toggle('border-yellow-500/30');
-                ui.modeLabel.innerText = isHeightMode ? "Medición de Altura" : "Distancia Lineal";
-                vibrate(30);
-            });
-
-            ui.undoBtn.addEventListener('click', undoLastPoint);
-            document.getElementById('clear-btn').addEventListener('click', () => location.reload());
 
             renderer.setAnimationLoop(render);
         }
 
-        function handleNormalModeClick(pos) {
-            if (points.length > 0) {
-                const dist = points[points.length - 1].distanceTo(pos);
-                historySegments.push(dist);
-                addHistoryEntry(dist, historySegments.length);
-                updateTotal();
-            }
-            const marker = createMarker(pos, points.length === 0 ? 0x22c55e : 0x22d3ee);
-            markers.push(marker);
+        function doLine(pos) {
+            if (points.length > 0) history.push(points[points.length-1].distanceTo(pos));
             points.push(pos);
-            ui.points.innerText = points.length;
-            updateLine();
+            addMarker(pos, points.length === 1 ? 0x22c55e : 0x22d3ee);
+            updateUI();
         }
 
-        function handleHeightModeClick(pos) {
+        function doHeight(pos) {
             if (!basePoint) {
                 basePoint = pos.clone();
-                markers.push(createMarker(basePoint, 0x22c55e));
-                points.push(basePoint);
+                addMarker(basePoint, 0x22c55e);
             } else {
                 const h = Math.abs(camera.position.y - basePoint.y);
-                const top = new THREE.Vector3(basePoint.x, basePoint.y + h, basePoint.z);
-                markers.push(createMarker(top, 0xeab308));
-                points.push(top);
-                updateLine();
-                addHistoryEntry(h, "Alt");
-                basePoint = null; 
+                history.push(h);
+                addMarker(new THREE.Vector3(basePoint.x, basePoint.y + h, basePoint.z), 0xeab308);
+                basePoint = null;
+                updateUI();
             }
         }
 
-        function createMarker(pos, color) {
-            const m = new THREE.Mesh(new THREE.SphereGeometry(0.012, 16, 16), new THREE.MeshBasicMaterial({ color: color }));
-            m.position.copy(pos);
+        function addMarker(p, c) {
+            const m = new THREE.Mesh(new THREE.SphereGeometry(0.012), new THREE.MeshBasicMaterial({color: c}));
+            m.position.copy(p);
             scene.add(m);
-            return m;
+            markers.push(m);
         }
 
-        function updateLine() {
-            if (mainLine) scene.remove(mainLine);
-            if (points.length >= 2) {
-                const geo = new THREE.BufferGeometry().setFromPoints(points);
-                mainLine = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
-                scene.add(mainLine);
-            }
+        function updateUI() {
+            document.getElementById('total-val').innerText = history.reduce((a, b) => a + b, 0).toFixed(2) + " m";
+            document.getElementById('pts-val').innerText = markers.length;
         }
-
-        function addHistoryEntry(dist, label) {
-            const div = document.createElement('div');
-            div.className = 'glass px-4 py-2.5 rounded-xl flex justify-between items-center animate-in slide-in-from-top-2';
-            div.innerHTML = `<span class="text-[8px] font-black uppercase text-slate-500">Tramo ${label}</span><span class="text-sm font-black text-white italic">${dist.toFixed(3)} m</span>`;
-            ui.history.prepend(div);
-        }
-
-        function updateTotal() {
-            const total = historySegments.reduce((a, b) => a + b, 0);
-            ui.total.innerText = total.toFixed(2) + " m";
-        }
-
-        function undoLastPoint() {
-            if (points.length === 0) return;
-            points.pop();
-            const m = markers.pop();
-            if (m) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
-            if (!isHeightMode && historySegments.length > 0) {
-                historySegments.pop();
-                ui.history.removeChild(ui.history.firstChild);
-                updateTotal();
-            }
-            ui.points.innerText = points.length;
-            updateLine();
-            if (isHeightMode) basePoint = null;
-            vibrate([30, 30]);
-        }
-
-        function clearMeasurements() {
-            markers.forEach(m => { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
-            if (mainLine) scene.remove(mainLine);
-            markers = []; points = []; historySegments = []; mainLine = null; basePoint = null;
-            ui.distance.innerHTML = `0.00<span class="text-lg ml-1">m</span>`;
-            ui.total.innerText = "0.00 m"; ui.points.innerText = "0"; ui.history.innerHTML = "";
-        }
-
-        function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
 
         function render(timestamp, frame) {
             if (frame) {
+                const ref = renderer.xr.getReferenceSpace();
                 const session = renderer.xr.getSession();
-                const refSpace = renderer.xr.getReferenceSpace();
-                if (!hitTestSourceRequested) {
+                if (!hitTestSource) {
                     session.requestReferenceSpace('viewer').then(rs => {
                         session.requestHitTestSource({ space: rs }).then(src => hitTestSource = src);
                     });
-                    hitTestSourceRequested = true;
                 }
                 if (hitTestSource) {
                     const hits = frame.getHitTestResults(hitTestSource);
                     if (hits.length > 0) {
                         reticle.visible = true;
-                        reticle.matrix.fromArray(hits[0].getPose(refSpace).transform.matrix);
-                        if (points.length > 0 && !isHeightMode) {
+                        reticle.matrix.fromArray(hits[0].getPose(ref).transform.matrix);
+                        if (points.length > 0 && !isHeight) {
                             const cur = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                            const d = points[points.length - 1].distanceTo(cur);
-                            ui.distance.innerHTML = `${d.toFixed(2)}<span class="text-lg not-italic font-medium text-cyan-400 ml-1">m</span>`;
+                            document.getElementById('dist-display').innerHTML = `${points[points.length-1].distanceTo(cur).toFixed(2)}<span class="text-lg text-cyan-400 ml-1">m</span>`;
                         }
                     } else reticle.visible = false;
                 }
-                if (isHeightMode && basePoint) {
-                    const h = Math.abs(camera.position.y - basePoint.y);
-                    ui.distance.innerHTML = `${h.toFixed(2)}<span class="text-lg not-italic font-medium text-cyan-400 ml-1">m</span>`;
+                if (isHeight && basePoint) {
+                    document.getElementById('dist-display').innerHTML = `${Math.abs(camera.position.y - basePoint.y).toFixed(2)}<span class="text-lg text-cyan-400 ml-1">m</span>`;
                 }
             }
             renderer.render(scene, camera);
         }
 
-        init();
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        ui.btn.onclick = startAR;
+        document.getElementById('btn-undo').onclick = () => {
+            if (markers.length > 0) {
+                scene.remove(markers.pop());
+                if (!isHeight) points.pop();
+                if (history.length > 0) history.pop();
+                updateUI();
+            }
+        };
+        document.getElementById('btn-height').onclick = () => {
+            isHeight = !isHeight;
+            document.getElementById('btn-height').classList.toggle('bg-yellow-500/20');
+            markers.forEach(m => scene.remove(m));
+            markers = []; points = []; history = []; basePoint = null;
+            updateUI();
+        };
+
+        runDiagnostics();
     </script>
 </body>
 </html>
