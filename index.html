@@ -9,66 +9,78 @@
         body { margin: 0; overflow: hidden; background-color: #020617; font-family: 'Inter', system-ui, sans-serif; }
         canvas { display: block; }
         .glass {
-            background: rgba(15, 23, 42, 0.8);
+            background: rgba(15, 23, 42, 0.85);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
-        .neon-shadow { box-shadow: 0 0 20px rgba(34, 211, 238, 0.3); }
         .app-logo {
             width: 160px;
             height: 160px;
             border-radius: 2.5rem;
-            box-shadow: 0 20px 50px rgba(6, 182, 212, 0.3);
+            box-shadow: 0 20px 50px rgba(6, 182, 212, 0.4);
             border: 2px solid rgba(255, 255, 255, 0.1);
             object-fit: cover;
         }
         .scroll-hide::-webkit-scrollbar { display: none; }
         
-        /* Fix for AR Button positioning */
+        /* Estilos forzados para el botón de AR */
+        #ar-button-container {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            min-height: 60px;
+        }
+
         #ar-button-container button {
-            all: unset !important;
+            position: static !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
             background: #0891b2 !important;
             color: white !important;
             font-weight: 900 !important;
-            padding: 1rem 2.5rem !important;
+            padding: 1.2rem 2.5rem !important;
             border-radius: 9999px !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.1em !important;
+            letter-spacing: 0.15em !important;
             font-size: 0.75rem !important;
+            border: none !important;
             cursor: pointer !important;
-            box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.5) !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 0.5rem !important;
+            box-shadow: 0 10px 30px rgba(6, 182, 212, 0.5) !important;
+            transition: transform 0.2s ease !important;
+            min-width: 200px !important;
         }
+        #ar-button-container button:active { transform: scale(0.95) !important; }
     </style>
 </head>
 <body>
 
     <!-- Pantalla de Bienvenida -->
     <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-between py-16 px-8 bg-slate-950 text-white">
-        <div class="flex flex-col items-center animate-in fade-in zoom-in duration-700">
+        <div class="flex flex-col items-center">
             <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj3-Z5UfmFQ8DyLGnUpruMPE4YJqcz15-vCkU3ygPmcE8odpiUzedzokhsxUpt9upGII3iAHPlf5eUAi68Q5aaJl0c0962hvuCVjVdvCteGYslw-pn7NfBN01136WRzhDHGybDTnIR9c8N1JCmQp4OzlFsce1rZup9OJ0uBlgABsYIQaeRCnq6VkbF9KHU/s320/WhatsApp%20Image%202026-03-30%20at%202.54.38%20PM%20(1).jpeg" 
                  alt="Jorge Hernández Logo" 
                  class="app-logo mb-8">
-            <h1 class="text-4xl font-black italic tracking-tighter uppercase leading-none">MEDIDOR AR <span class="text-cyan-400">PRO</span></h1>
+            <h1 class="text-4xl font-black italic tracking-tighter uppercase leading-none text-center">MEDIDOR AR <span class="text-cyan-400">PRO</span></h1>
             <p class="text-slate-500 text-[10px] tracking-[0.5em] mt-4 uppercase font-bold opacity-80">Jorge Hernández &bull; 2026</p>
         </div>
 
-        <div id="ar-button-container"></div>
+        <!-- Contenedor del Botón AR -->
+        <div id="ar-button-container">
+            <p id="loading-msg" class="text-xs text-cyan-500 animate-pulse font-bold tracking-widest uppercase">Cargando Sensores...</p>
+        </div>
 
         <div class="text-center opacity-60 max-w-xs">
             <p class="text-[9px] tracking-widest text-cyan-500 font-bold uppercase mb-2">Ingeniería de Precisión</p>
-            <p class="text-xs text-slate-400">Asegúrese de estar en un área bien iluminada para calibrar los sensores de superficie.</p>
+            <p class="text-xs text-slate-400">Si el botón no aparece, asegúrate de usar Chrome o Samsung Internet en un dispositivo compatible.</p>
         </div>
     </div>
 
     <!-- UI de Medición Activa -->
     <div id="ui-layer" class="fixed inset-0 pointer-events-none hidden flex-col justify-between p-6 z-40">
-        <!-- Panel Superior -->
         <div class="flex flex-col items-center gap-4">
-            <div class="glass w-full max-w-sm p-5 rounded-[2rem] shadow-2xl border-cyan-500/20">
+            <div class="glass w-full max-w-sm p-5 rounded-[2rem] shadow-2xl">
                 <div class="flex justify-between items-start mb-4 px-2">
                     <div class="flex flex-col">
                         <span class="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-1">Acumulado</span>
@@ -88,37 +100,33 @@
                 </div>
             </div>
 
-            <!-- Historial -->
-            <div id="history-container" class="w-full max-w-[280px] max-h-32 overflow-y-auto scroll-hide flex flex-col gap-1.5 pointer-events-auto">
-                <!-- Items dinámicos -->
-            </div>
+            <div id="history-container" class="w-full max-w-[280px] max-h-32 overflow-y-auto scroll-hide flex flex-col gap-1.5 pointer-events-auto"></div>
         </div>
 
-        <!-- Mira Central -->
+        <!-- Mira -->
         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
             <div class="relative w-12 h-12 flex items-center justify-center">
                 <div class="absolute inset-0 border border-white/20 rounded-full animate-pulse"></div>
                 <div class="w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee]"></div>
-                <!-- Ejes -->
                 <div class="absolute w-6 h-[1px] bg-white/40"></div>
                 <div class="absolute h-6 w-[1px] bg-white/40"></div>
             </div>
         </div>
 
-        <!-- Botonera Inferior -->
+        <!-- Controles -->
         <div class="flex items-end gap-3 pointer-events-auto w-full max-w-sm mx-auto">
             <button id="undo-btn" class="glass w-14 h-14 rounded-2xl flex items-center justify-center active:scale-90 transition-transform text-slate-300">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>
             </button>
             
-            <button id="height-btn" class="glass flex-1 h-16 rounded-[1.5rem] flex items-center justify-center gap-3 active:scale-95 transition-all border-transparent">
+            <button id="height-btn" class="glass flex-1 h-16 rounded-[1.5rem] flex items-center justify-center gap-3 active:scale-95 transition-all">
                 <svg id="height-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                 </svg>
                 <span class="text-[10px] font-black uppercase tracking-widest text-white">Modo Altura</span>
             </button>
 
-            <button id="clear-btn" class="glass w-16 h-16 rounded-2xl flex items-center justify-center active:scale-90 transition-transform text-red-500 border-red-500/10">
+            <button id="clear-btn" class="glass w-16 h-16 rounded-2xl flex items-center justify-center active:scale-90 transition-transform text-red-500">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
@@ -142,26 +150,21 @@
         let isHeightMode = false;
         let basePoint = null;
 
-        const uiElements = {
+        const ui = {
             distance: document.getElementById('distance-display'),
             total: document.getElementById('total-display'),
             points: document.getElementById('points-count'),
             history: document.getElementById('history-container'),
-            ui: document.getElementById('ui-layer'),
-            start: document.getElementById('start-screen'),
+            uiLayer: document.getElementById('ui-layer'),
+            startScreen: document.getElementById('start-screen'),
             heightBtn: document.getElementById('height-btn'),
             modeLabel: document.getElementById('mode-label'),
-            undoBtn: document.getElementById('undo-btn')
+            undoBtn: document.getElementById('undo-btn'),
+            arContainer: document.getElementById('ar-button-container'),
+            loadingMsg: document.getElementById('loading-msg')
         };
 
-        async function init() {
-            if ('xr' in navigator) {
-                const supported = await navigator.xr.isSessionSupported('immersive-ar');
-                if (supported) setupAR();
-            }
-        }
-
-        function setupAR() {
+        function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
             
@@ -171,61 +174,51 @@
             renderer.xr.enabled = true;
             document.body.appendChild(renderer.domElement);
 
+            // Generar el botón AR directamente
             const button = ARButton.createButton(renderer, { 
                 requiredFeatures: ['hit-test'],
                 optionalFeatures: ['dom-overlay'],
                 domOverlay: { root: document.body }
             });
-            document.getElementById('ar-button-container').appendChild(button);
+            
+            // Reemplazar mensaje de carga por el botón
+            ui.arContainer.innerHTML = '';
+            ui.arContainer.appendChild(button);
 
             scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.5));
 
-            // Retícula mejorada
             reticle = new THREE.Group();
-            const ring = new THREE.Mesh(
-                new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2),
-                new THREE.MeshBasicMaterial({ color: 0x22d3ee })
+            reticle.add(
+                new THREE.Mesh(new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x22d3ee })),
+                new THREE.Mesh(new THREE.SphereGeometry(0.005, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff }))
             );
-            const dot = new THREE.Mesh(
-                new THREE.SphereGeometry(0.005, 16, 16),
-                new THREE.MeshBasicMaterial({ color: 0xffffff })
-            );
-            reticle.add(ring, dot);
             reticle.matrixAutoUpdate = false;
             reticle.visible = false;
             scene.add(reticle);
 
-            // Eventos
             renderer.xr.addEventListener('sessionstart', () => {
-                uiElements.start.style.display = 'none';
-                uiElements.ui.style.display = 'flex';
+                ui.startScreen.style.display = 'none';
+                ui.uiLayer.style.display = 'flex';
             });
 
             window.addEventListener('click', (ev) => {
                 if (!reticle.visible || ev.target.closest('button')) return;
                 const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                
                 if (isHeightMode) handleHeightModeClick(pos);
                 else handleNormalModeClick(pos);
-                
                 vibrate(50);
             });
 
-            uiElements.heightBtn.addEventListener('click', () => {
+            ui.heightBtn.addEventListener('click', () => {
                 isHeightMode = !isHeightMode;
                 clearMeasurements();
-                
-                if (isHeightMode) {
-                    uiElements.heightBtn.classList.add('border-yellow-500/50', 'bg-yellow-500/10');
-                    uiElements.modeLabel.innerText = "Medición de Altura";
-                } else {
-                    uiElements.heightBtn.classList.remove('border-yellow-500/50', 'bg-yellow-500/10');
-                    uiElements.modeLabel.innerText = "Distancia Lineal";
-                }
+                ui.heightBtn.classList.toggle('bg-yellow-500/10');
+                ui.heightBtn.classList.toggle('border-yellow-500/30');
+                ui.modeLabel.innerText = isHeightMode ? "Medición de Altura" : "Distancia Lineal";
                 vibrate(30);
             });
 
-            uiElements.undoBtn.addEventListener('click', undoLastPoint);
+            ui.undoBtn.addEventListener('click', undoLastPoint);
             document.getElementById('clear-btn').addEventListener('click', () => location.reload());
 
             renderer.setAnimationLoop(render);
@@ -238,38 +231,31 @@
                 addHistoryEntry(dist, historySegments.length);
                 updateTotal();
             }
-
             const marker = createMarker(pos, points.length === 0 ? 0x22c55e : 0x22d3ee);
             markers.push(marker);
             points.push(pos);
-            uiElements.points.innerText = points.length;
+            ui.points.innerText = points.length;
             updateLine();
         }
 
         function handleHeightModeClick(pos) {
             if (!basePoint) {
                 basePoint = pos.clone();
-                const m = createMarker(basePoint, 0x22c55e);
-                markers.push(m);
+                markers.push(createMarker(basePoint, 0x22c55e));
                 points.push(basePoint);
             } else {
-                const height = Math.abs(camera.position.y - basePoint.y);
-                const topPoint = new THREE.Vector3(basePoint.x, basePoint.y + height, basePoint.z);
-                const m = createMarker(topPoint, 0xeab308);
-                markers.push(m);
-                points.push(topPoint);
+                const h = Math.abs(camera.position.y - basePoint.y);
+                const top = new THREE.Vector3(basePoint.x, basePoint.y + h, basePoint.z);
+                markers.push(createMarker(top, 0xeab308));
+                points.push(top);
                 updateLine();
-                
-                addHistoryEntry(height, "Alt");
+                addHistoryEntry(h, "Alt");
                 basePoint = null; 
             }
         }
 
         function createMarker(pos, color) {
-            const m = new THREE.Mesh(
-                new THREE.SphereGeometry(0.012, 16, 16),
-                new THREE.MeshBasicMaterial({ color: color })
-            );
+            const m = new THREE.Mesh(new THREE.SphereGeometry(0.012, 16, 16), new THREE.MeshBasicMaterial({ color: color }));
             m.position.copy(pos);
             scene.add(m);
             return m;
@@ -278,45 +264,35 @@
         function updateLine() {
             if (mainLine) scene.remove(mainLine);
             if (points.length >= 2) {
-                const geometry = new THREE.BufferGeometry().setFromPoints(points);
-                mainLine = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
+                const geo = new THREE.BufferGeometry().setFromPoints(points);
+                mainLine = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }));
                 scene.add(mainLine);
             }
         }
 
         function addHistoryEntry(dist, label) {
             const div = document.createElement('div');
-            div.className = 'glass px-4 py-2.5 rounded-xl flex justify-between items-center animate-in slide-in-from-top-2 duration-300';
-            div.innerHTML = `
-                <span class="text-[8px] font-black uppercase text-slate-500">Tramo ${label}</span>
-                <span class="text-sm font-black text-white italic">${dist.toFixed(3)} m</span>
-            `;
-            uiElements.history.prepend(div);
+            div.className = 'glass px-4 py-2.5 rounded-xl flex justify-between items-center animate-in slide-in-from-top-2';
+            div.innerHTML = `<span class="text-[8px] font-black uppercase text-slate-500">Tramo ${label}</span><span class="text-sm font-black text-white italic">${dist.toFixed(3)} m</span>`;
+            ui.history.prepend(div);
         }
 
         function updateTotal() {
             const total = historySegments.reduce((a, b) => a + b, 0);
-            uiElements.total.innerText = total.toFixed(2) + " m";
+            ui.total.innerText = total.toFixed(2) + " m";
         }
 
         function undoLastPoint() {
             if (points.length === 0) return;
-            
-            const lastPoint = points.pop();
-            const lastMarker = markers.pop();
-            if (lastMarker) {
-                scene.remove(lastMarker);
-                lastMarker.geometry.dispose();
-                lastMarker.material.dispose();
-            }
-
+            points.pop();
+            const m = markers.pop();
+            if (m) { scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
             if (!isHeightMode && historySegments.length > 0) {
                 historySegments.pop();
-                uiElements.history.removeChild(uiElements.history.firstChild);
+                ui.history.removeChild(ui.history.firstChild);
                 updateTotal();
             }
-
-            uiElements.points.innerText = points.length;
+            ui.points.innerText = points.length;
             updateLine();
             if (isHeightMode) basePoint = null;
             vibrate([30, 30]);
@@ -326,55 +302,43 @@
             markers.forEach(m => { scene.remove(m); m.geometry.dispose(); m.material.dispose(); });
             if (mainLine) scene.remove(mainLine);
             markers = []; points = []; historySegments = []; mainLine = null; basePoint = null;
-            uiElements.distance.innerHTML = `0.00<span class="text-lg ml-1">m</span>`;
-            uiElements.total.innerText = "0.00 m";
-            uiElements.points.innerText = "0";
-            uiElements.history.innerHTML = "";
+            ui.distance.innerHTML = `0.00<span class="text-lg ml-1">m</span>`;
+            ui.total.innerText = "0.00 m"; ui.points.innerText = "0"; ui.history.innerHTML = "";
         }
 
-        function vibrate(pattern) {
-            if (navigator.vibrate) navigator.vibrate(pattern);
-        }
+        function vibrate(p) { if (navigator.vibrate) navigator.vibrate(p); }
 
         function render(timestamp, frame) {
             if (frame) {
                 const session = renderer.xr.getSession();
                 const refSpace = renderer.xr.getReferenceSpace();
-                
                 if (!hitTestSourceRequested) {
                     session.requestReferenceSpace('viewer').then(rs => {
                         session.requestHitTestSource({ space: rs }).then(src => hitTestSource = src);
                     });
                     hitTestSourceRequested = true;
                 }
-
                 if (hitTestSource) {
                     const hits = frame.getHitTestResults(hitTestSource);
                     if (hits.length > 0) {
                         reticle.visible = true;
                         reticle.matrix.fromArray(hits[0].getPose(refSpace).transform.matrix);
-                        
                         if (points.length > 0 && !isHeightMode) {
-                            const currentPos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                            const dist = points[points.length - 1].distanceTo(currentPos);
-                            uiElements.distance.innerHTML = `${dist.toFixed(2)}<span class="text-lg not-italic font-medium text-cyan-400 ml-1">m</span>`;
+                            const cur = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
+                            const d = points[points.length - 1].distanceTo(cur);
+                            ui.distance.innerHTML = `${d.toFixed(2)}<span class="text-lg not-italic font-medium text-cyan-400 ml-1">m</span>`;
                         }
-                    } else {
-                        reticle.visible = false;
-                    }
+                    } else reticle.visible = false;
                 }
-
                 if (isHeightMode && basePoint) {
                     const h = Math.abs(camera.position.y - basePoint.y);
-                    uiElements.distance.innerHTML = `${h.toFixed(2)}<span class="text-lg not-italic font-medium text-cyan-400 ml-1">m</span>`;
+                    ui.distance.innerHTML = `${h.toFixed(2)}<span class="text-lg not-italic font-medium text-cyan-400 ml-1">m</span>`;
                 }
             }
             renderer.render(scene, camera);
         }
 
         init();
-
-        // Responsive handling
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
