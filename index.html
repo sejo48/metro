@@ -1,570 +1,364 @@
 <!DOCTYPE html>
 <html lang="es">
-<head><!DOCTYPE html>
-<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Medidor AR Pro - Jorge Hernández</title>
+    <title>AR Measure Pro - Diagnóstico Inteligente</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #020617; font-family: system-ui, -apple-system, sans-serif; color: white; }
-        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        
-        .app-logo {
-            width: 130px;
-            height: 130px;
-            border-radius: 2rem;
-            box-shadow: 0 10px 50px rgba(6, 182, 212, 0.4);
-            object-fit: cover;
-            border: 2px solid rgba(255, 255, 255, 0.1);
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 0.8; }
         }
-
-        #btn-start {
-            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
-            color: white;
-            font-weight: 900;
-            padding: 1.5rem 2rem;
-            border-radius: 1.5rem;
-            text-transform: uppercase;
+        .reticle-pulse {
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        #video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
-            max-width: 320px;
-            box-shadow: 0 15px 40px rgba(6, 182, 212, 0.5);
-            border: none;
-            cursor: pointer;
-            font-size: 1.1rem;
-            letter-spacing: 0.05em;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
         }
-
-        .btn-copy {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 0.8rem 1.5rem;
-            border-radius: 1rem;
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-top: 10px;
+        canvas {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
         }
-
-        .status-pill {
-            padding: 4px 10px;
-            border-radius: 99px;
-            font-size: 10px;
-            font-weight: 800;
+        .glass-panel {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .pill-red { background: #ef4444; color: white; }
-        .pill-green { background: #22c55e; color: white; }
     </style>
 </head>
-<body>
+<body class="bg-black text-white overflow-hidden font-sans">
 
-    <!-- Pantalla de Inicio y Diagnóstico -->
-    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-between py-12 px-8 bg-slate-950">
-        <div class="text-center">
-            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj3-Z5UfmFQ8DyLGnUpruMPE4YJqcz15-vCkU3ygPmcE8odpiUzedzokhsxUpt9upGII3iAHPlf5eUAi68Q5aaJl0c0962hvuCVjVdvCteGYslw-pn7NfBN01136WRzhDHGybDTnIR9c8N1JCmQp4OzlFsce1rZup9OJ0uBlgABsYIQaeRCnq6VkbF9KHU/s320/WhatsApp%20Image%202026-03-30%20at%202.54.38%20PM%20(1).jpeg" 
-                 class="app-logo mx-auto mb-8">
-            <h1 class="text-3xl font-black italic uppercase tracking-tighter">MEDIDOR AR <span class="text-cyan-400">PRO</span></h1>
-            <p class="text-slate-500 text-[10px] tracking-[0.4em] mt-2 uppercase font-bold text-center">Jorge Hernández &bull; 2026</p>
-        </div>
+    <!-- Video de Cámara -->
+    <video id="video-background" autoplay playsinline muted></video>
 
-        <div class="w-full flex flex-col items-center gap-6">
-            <button id="btn-start">ENCENDER CÁMARA</button>
-
-            <!-- Panel de Estado -->
-            <div id="status-panel" class="glass p-5 rounded-3xl w-full max-w-xs space-y-4">
-                <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Sitio Seguro:</span>
-                    <span id="stat-https" class="status-pill pill-red">NO</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Sensor AR:</span>
-                    <span id="stat-ar" class="status-pill pill-red">NO</span>
-                </div>
-                
-                <!-- Aviso de Solución -->
-                <div id="fix-notice" class="hidden pt-2 border-t border-white/5 text-center">
-                    <p class="text-[10px] text-cyan-400 font-bold leading-tight mb-3">⚠️ ESTÁS EN UN NAVEGADOR RESTRINGIDO.<br>Copia el link y pégalo en CHROME.</p>
-                    <button id="btn-copy-url" class="btn-copy">Copiar Enlace AR</button>
-                </div>
+    <!-- UI: Capa de Diagnóstico -->
+    <div id="diag-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-6 glass-panel hidden">
+        <div class="max-w-md w-full bg-gray-900 rounded-3xl p-8 shadow-2xl border border-gray-700">
+            <h2 class="text-2xl font-bold mb-4 text-center">Diagnóstico del Sistema</h2>
+            <div id="diag-list" class="space-y-4">
+                <!-- Items de diagnóstico -->
             </div>
-        </div>
-
-        <p class="text-[9px] text-slate-600 font-bold uppercase tracking-widest text-center">
-            Diseñado para Ingeniería de Campo
-        </p>
-    </div>
-
-    <!-- Interfaz de Medición (Solo activa en sesión AR) -->
-    <div id="ui-layer" class="fixed inset-0 pointer-events-none hidden flex-col justify-between p-6 z-40">
-        <div class="flex flex-col items-center">
-            <div class="glass p-5 rounded-[2.5rem] w-full max-w-sm border-cyan-500/30">
-                <div id="dist-val" class="text-6xl font-black italic text-center">0.00<span class="text-xl text-cyan-400 ml-1">m</span></div>
-                <div class="flex justify-between mt-4 border-t border-white/5 pt-4 text-[10px] font-black uppercase text-slate-500">
-                    <span>Puntos: <b id="pts-count" class="text-white">0</b></span>
-                    <span>Total: <b id="total-val" class="text-white">0.00 m</b></span>
-                </div>
+            <div id="browser-help" class="mt-8 hidden">
+                <p class="text-sm text-gray-400 mb-4 text-center">Parece que estás en un navegador restringido. Para usar la cámara, abre este enlace en Chrome o Safari.</p>
+                <button onclick="copyToClipboard()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl transition-all">
+                    Copiar Enlace
+                </button>
             </div>
-        </div>
-
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div class="w-12 h-12 border-2 border-white/20 rounded-full flex items-center justify-center">
-                <div class="w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee]"></div>
-            </div>
-        </div>
-
-        <div class="flex gap-3 pointer-events-auto w-full max-w-sm mx-auto">
-            <button id="undo-act" class="glass p-5 rounded-2xl active:scale-90 text-slate-300 font-bold uppercase text-[10px]">Deshacer</button>
-            <button id="height-act" class="glass flex-1 py-5 rounded-2xl font-black text-[10px] uppercase text-white">Modo Altura</button>
-            <button onclick="location.reload()" class="glass p-5 rounded-2xl text-red-500 font-bold uppercase text-[10px]">Reset</button>
+            <button id="btn-start" class="w-full mt-6 bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl hidden">
+                Iniciar Aplicación
+            </button>
         </div>
     </div>
 
-    <script type="module">
-        import * as THREE from 'https://cdn.skypack.dev/three@0.128.0';
+    <!-- UI: HUD de Medición -->
+    <div id="hud" class="fixed inset-0 pointer-events-none flex flex-col justify-between p-6 opacity-0 transition-opacity duration-500 z-10">
+        <!-- Superior: Info -->
+        <div class="flex justify-between items-start pt-4">
+            <div class="glass-panel p-4 rounded-2xl">
+                <p class="text-xs text-gray-400 uppercase tracking-widest">Longitud Total</p>
+                <p class="text-4xl font-black text-green-400"><span id="total-dist">0.00</span><span class="text-xl ml-1 text-white">m</span></p>
+            </div>
+            <div class="glass-panel p-4 rounded-2xl text-right">
+                <p class="text-xs text-gray-400 uppercase tracking-widest">Nodos</p>
+                <p id="node-count" class="text-2xl font-bold">0</p>
+            </div>
+        </div>
 
-        let camera, scene, renderer, reticle, hitTestSource = null;
-        let points = [], markers = [], history = [], isHeight = false, basePoint = null;
+        <!-- Centro: Retícula -->
+        <div class="flex items-center justify-center">
+            <div class="relative flex items-center justify-center">
+                <div class="w-12 h-12 border-2 border-white rounded-full reticle-pulse opacity-50"></div>
+                <div class="absolute w-1 h-1 bg-white rounded-full"></div>
+                <div id="segment-dist-popup" class="absolute bottom-16 glass-panel px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap opacity-0 transition-opacity">
+                    <span id="current-segment-val">0.00</span> m
+                </div>
+            </div>
+        </div>
 
-        const ui = {
-            screen: document.getElementById('start-screen'),
-            work: document.getElementById('ui-layer'),
-            btn: document.getElementById('btn-start'),
-            statHttps: document.getElementById('stat-https'),
-            statAr: document.getElementById('stat-ar'),
-            fix: document.getElementById('fix-notice'),
-            copy: document.getElementById('btn-copy-url'),
-            dist: document.getElementById('dist-val'),
-            total: document.getElementById('total-val'),
-            pts: document.getElementById('pts-count')
+        <!-- Inferior: Controles -->
+        <div class="flex flex-col gap-4 pointer-events-auto">
+            <div class="flex justify-center gap-4">
+                <button onclick="toggleMode('linear')" id="mode-linear" class="glass-panel px-6 py-3 rounded-full text-xs font-bold border-2 border-blue-500">LINEAL</button>
+                <button onclick="toggleMode('height')" id="mode-height" class="glass-panel px-6 py-3 rounded-full text-xs font-bold border-2 border-transparent text-gray-400">ALTURA</button>
+            </div>
+            
+            <div class="flex items-center justify-between gap-4 pb-4">
+                <button onclick="resetScene()" class="w-16 h-16 rounded-full glass-panel flex items-center justify-center text-red-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                </button>
+
+                <button onclick="addPoint()" class="flex-1 h-20 bg-white text-black rounded-3xl flex items-center justify-center shadow-xl active:scale-95 transition-transform">
+                    <span class="text-xl font-black tracking-tighter">MARCAR PUNTO</span>
+                </button>
+
+                <button onclick="undoLastPoint()" class="w-16 h-16 rounded-full glass-panel flex items-center justify-center text-yellow-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURACIÓN Y VARIABLES ---
+        let scene, camera, renderer, raycaster;
+        let points = []; // [{pos, type}]
+        let measurementLines = [];
+        let currentMode = 'linear';
+        let groundPlane;
+        let totalDistance = 0;
+        let isInitialized = false;
+
+        const COLORS = {
+            base: 0x22c55e, // Verde
+            intermediate: 0x22d3ee, // Cian
+            height: 0xeab308 // Amarillo
         };
 
-        // 1. Diagnóstico Real
-        async function runDiagnostics() {
-            const isHttps = window.isSecureContext;
-            if (isHttps) {
-                ui.statHttps.innerText = "SÍ";
-                ui.statHttps.className = "status-pill pill-green";
-            }
+        // --- DIAGNÓSTICO ---
+        window.onload = async () => {
+            const diagOverlay = document.getElementById('diag-overlay');
+            const diagList = document.getElementById('diag-list');
+            diagOverlay.classList.remove('hidden');
 
-            if ('xr' in navigator) {
-                const supported = await navigator.xr.isSessionSupported('immersive-ar');
-                if (supported) {
-                    ui.statAr.innerText = "SÍ";
-                    ui.statAr.className = "status-pill pill-green";
-                }
-            }
+            const isRestrictedBrowser = /FBAN|FBAV|Instagram|WhatsApp/i.test(navigator.userAgent);
+            const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
 
-            // Si falla el diagnóstico, mostrar ayuda para salir del chat
-            if (!isHttps || ui.statAr.innerText === "NO") {
-                ui.fix.classList.remove('hidden');
-            }
-        }
+            const checks = [
+                { id: 'https', name: 'Seguridad HTTPS', status: isSecure },
+                { id: 'sensors', name: 'Sensores de Cámara', status: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) },
+                { id: 'webxr', name: 'Soporte WebXR/3D', status: !!window.WebGLRenderingContext },
+                { id: 'browser', name: 'Navegador Compatible', status: !isRestrictedBrowser }
+            ];
 
-        // 2. Copiar URL para pegar en Chrome
-        ui.copy.onclick = () => {
-            const dummy = document.createElement('input');
-            document.body.appendChild(dummy);
-            dummy.value = window.location.href;
-            dummy.select();
-            document.execCommand('copy');
-            document.body.removeChild(dummy);
-            ui.copy.innerText = "¡ENLACE COPIADO!";
-            ui.copy.classList.replace('btn-copy', 'bg-cyan-600');
-        };
-
-        async function startAR() {
-            try {
-                const session = await navigator.xr.requestSession('immersive-ar', {
-                    requiredFeatures: ['hit-test'],
-                    optionalFeatures: ['dom-overlay'],
-                    domOverlay: { root: document.body }
-                });
-                
-                ui.screen.style.display = 'none';
-                ui.work.style.display = 'flex';
-                setup(session);
-            } catch (e) {
-                console.error(e);
-                alert("Para usar AR, debes abrir este enlace directamente en Google Chrome.");
-            }
-        }
-
-        function setup(session) {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true;
-            document.body.appendChild(renderer.domElement);
-            renderer.xr.setSession(session);
-
-            scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
-            reticle = new THREE.Mesh(
-                new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI/2),
-                new THREE.MeshBasicMaterial({ color: 0x22d3ee })
-            );
-            reticle.matrixAutoUpdate = false;
-            reticle.visible = false;
-            scene.add(reticle);
-
-            window.addEventListener('click', (e) => {
-                if (!reticle.visible || e.target.closest('button')) return;
-                const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                isHeight ? doHeight(pos) : doLine(pos);
+            let allOk = true;
+            diagList.innerHTML = '';
+            checks.forEach(check => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between bg-gray-800 p-3 rounded-lg";
+                div.innerHTML = `
+                    <span>${check.name}</span>
+                    <span class="${check.status ? 'text-green-500' : 'text-red-500'} font-bold">
+                        ${check.status ? 'OK' : 'FALLO'}
+                    </span>
+                `;
+                diagList.appendChild(div);
+                if (!check.status) allOk = false;
             });
-            renderer.setAnimationLoop(render);
-        }
 
-        function doLine(pos) {
-            if (points.length > 0) {
-                const last = points[points.length - 1];
-                const dist = last.distanceTo(pos);
-                history.push(dist);
-                ui.dist.innerHTML = `${dist.toFixed(2)}<span class="text-lg text-cyan-400 ml-1">m</span>`;
-            } else {
-                ui.dist.innerHTML = `0.00<span class="text-lg text-cyan-400 ml-1">m</span>`;
+            if (isRestrictedBrowser) {
+                document.getElementById('browser-help').classList.remove('hidden');
+            } else if (allOk) {
+                document.getElementById('btn-start').classList.remove('hidden');
+            } else if (!isSecure) {
+                const errorMsg = document.createElement('p');
+                errorMsg.className = "text-red-400 text-xs mt-4 text-center";
+                errorMsg.innerText = "La cámara requiere HTTPS para funcionar.";
+                diagList.appendChild(errorMsg);
             }
 
-            points.push(pos);
-            addMarker(pos, points.length === 1 ? 0x22c55e : 0x22d3ee);
-            updateUI();
+            document.getElementById('btn-start').onclick = () => {
+                diagOverlay.classList.add('hidden');
+                document.getElementById('hud').classList.remove('opacity-0');
+                initApp();
+            };
+        };
+
+        function copyToClipboard() {
+            const el = document.createElement('textarea');
+            el.value = window.location.href;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+            alert("¡Enlace copiado! Pégalo en Chrome.");
         }
 
-        function doHeight(pos) {
-            if (!basePoint) {
-                basePoint = pos.clone();
-                addMarker(basePoint, 0x22c55e);
+        // --- LÓGICA DE LA APP ---
+        async function initApp() {
+            if (isInitialized) return;
+
+            // Iniciar Cámara
+            try {
+                const video = document.getElementById('video-background');
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'environment',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    } 
+                });
+                video.srcObject = stream;
+            } catch (e) {
+                console.error("Error cámara:", e);
+            }
+
+            // Three.js Setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.body.appendChild(renderer.domElement);
+
+            raycaster = new THREE.Raycaster();
+
+            // Plano de suelo invisible para raycasting
+            const geometry = new THREE.PlaneGeometry(100, 100);
+            geometry.rotateX(-Math.PI / 2);
+            const material = new THREE.MeshBasicMaterial({ visible: false });
+            groundPlane = new THREE.Mesh(geometry, material);
+            scene.add(groundPlane);
+
+            // Luz
+            const light = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
+            scene.add(light);
+
+            camera.position.set(0, 1.6, 0); // Altura estimada del usuario
+            
+            isInitialized = true;
+            animate();
+        }
+
+        function animate() {
+            if (!isInitialized || !renderer || !camera) return;
+            requestAnimationFrame(animate);
+            
+            // Raycasting desde el centro de la pantalla
+            raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+            const intersects = raycaster.intersectObject(groundPlane);
+            
+            if (intersects.length > 0 && points.length > 0) {
+                const lastPoint = points[points.length - 1].pos;
+                const currentPos = intersects[0].point;
+                
+                let dist;
+                if (currentMode === 'height') {
+                    // Simulación simple de altura basada en inclinación
+                    dist = Math.abs(camera.position.y - lastPoint.y);
+                } else {
+                    dist = lastPoint.distanceTo(currentPos);
+                }
+                
+                document.getElementById('current-segment-val').innerText = dist.toFixed(2);
+                document.getElementById('segment-dist-popup').style.opacity = '1';
             } else {
-                const h = Math.abs(camera.position.y - basePoint.y);
-                history.push(h);
-                addMarker(new THREE.Vector3(basePoint.x, basePoint.y + h, basePoint.z), 0xeab308);
-                basePoint = null;
+                document.getElementById('segment-dist-popup').style.opacity = '0';
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function addPoint() {
+            if (!isInitialized || !camera) return;
+
+            raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+            const intersects = raycaster.intersectObject(groundPlane);
+
+            if (intersects.length > 0) {
+                let targetPos = intersects[0].point.clone();
+                let pointColor = COLORS.intermediate;
+
+                if (points.length === 0) {
+                    pointColor = COLORS.base;
+                } else if (currentMode === 'height') {
+                    pointColor = COLORS.height;
+                    const lastPoint = points[points.length - 1].pos;
+                    targetPos.x = lastPoint.x;
+                    targetPos.z = lastPoint.z;
+                    // Proyección vertical simplificada
+                    targetPos.y = Math.max(lastPoint.y, camera.position.y - 0.2); 
+                }
+
+                // Crear esfera visual
+                const geo = new THREE.SphereGeometry(0.04, 16, 16);
+                const mat = new THREE.MeshBasicMaterial({ color: pointColor });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.position.copy(targetPos);
+                scene.add(mesh);
+
+                // Dibujar línea
+                let line = null;
+                if (points.length > 0) {
+                    const lastPoint = points[points.length - 1].pos;
+                    const lineGeo = new THREE.BufferGeometry().setFromPoints([lastPoint, targetPos]);
+                    const lineMat = new THREE.LineBasicMaterial({ color: pointColor, linewidth: 3 });
+                    line = new THREE.Line(lineGeo, lineMat);
+                    scene.add(line);
+                    
+                    const segmentDist = lastPoint.distanceTo(targetPos);
+                    totalDistance += segmentDist;
+                }
+
+                measurementLines.push({mesh, line});
+                points.push({pos: targetPos, type: currentMode});
                 updateUI();
             }
         }
 
-        function addMarker(p, c) {
-            const m = new THREE.Mesh(new THREE.SphereGeometry(0.012), new THREE.MeshBasicMaterial({color: c}));
-            m.position.copy(p);
-            scene.add(m);
-            markers.push(m);
-        }
-
-        function updateUI() {
-            const total = history.reduce((a, b) => a + b, 0);
-            ui.total.innerText = total.toFixed(2) + " m";
-            ui.pts.innerText = points.length;
-        }
-
-        function render(timestamp, frame) {
-            if (frame) {
-                const ref = renderer.xr.getReferenceSpace();
-                const session = renderer.xr.getSession();
-                if (!hitTestSource) {
-                    session.requestReferenceSpace('viewer').then(rs => {
-                        session.requestHitTestSource({ space: rs }).then(src => hitTestSource = src);
-                    });
-                }
-                if (hitTestSource) {
-                    const hits = frame.getHitTestResults(hitTestSource);
-                    if (hits.length > 0) {
-                        reticle.visible = true;
-                        reticle.matrix.fromArray(hits[0].getPose(ref).transform.matrix);
-                        if (points.length > 0 && !isHeight) {
-                            const cur = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                            ui.dist.innerHTML = `${points[points.length-1].distanceTo(cur).toFixed(2)}<span class="text-lg text-cyan-400 ml-1">m</span>`;
-                        }
-                    } else reticle.visible = false;
-                }
-                if (isHeight && basePoint) {
-                    ui.dist.innerHTML = `${Math.abs(camera.position.y - basePoint.y).toFixed(2)}<span class="text-lg text-cyan-400 ml-1">m</span>`;
-                }
+        function undoLastPoint() {
+            if (points.length === 0) return;
+            
+            const lastData = measurementLines.pop();
+            if (lastData.mesh) scene.remove(lastData.mesh);
+            
+            if (lastData.line) {
+                const lastPoint = points[points.length - 1].pos;
+                const prevPoint = points[points.length - 2].pos;
+                totalDistance -= lastPoint.distanceTo(prevPoint);
+                scene.remove(lastData.line);
             }
-            renderer.render(scene, camera);
-        }
-
-        ui.btn.onclick = startAR;
-        runDiagnostics();
-    </script>
-</body>
-</html>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Medidor AR Pro - Jorge Hernández</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #020617; font-family: system-ui, -apple-system, sans-serif; color: white; }
-        .glass { background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        
-        .app-logo {
-            width: 130px;
-            height: 130px;
-            border-radius: 2rem;
-            box-shadow: 0 10px 50px rgba(6, 182, 212, 0.4);
-            object-fit: cover;
-            border: 2px solid rgba(255, 255, 255, 0.1);
-        }
-
-        #btn-start {
-            background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
-            color: white;
-            font-weight: 900;
-            padding: 1.5rem 2rem;
-            border-radius: 1.5rem;
-            text-transform: uppercase;
-            width: 100%;
-            max-width: 320px;
-            box-shadow: 0 15px 40px rgba(6, 182, 212, 0.5);
-            border: none;
-            cursor: pointer;
-            font-size: 1.1rem;
-            letter-spacing: 0.05em;
-        }
-
-        .btn-copy {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px border rgba(255, 255, 255, 0.2);
-            padding: 0.8rem 1.5rem;
-            border-radius: 1rem;
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-top: 10px;
-        }
-
-        .status-pill {
-            padding: 4px 10px;
-            border-radius: 99px;
-            font-size: 10px;
-            font-weight: 800;
-        }
-        .pill-red { background: #ef4444; color: white; }
-        .pill-green { background: #22c55e; color: white; }
-    </style>
-</head>
-<body>
-
-    <!-- Pantalla de Inicio y Diagnóstico -->
-    <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-between py-12 px-8 bg-slate-950">
-        <div class="text-center">
-            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEj3-Z5UfmFQ8DyLGnUpruMPE4YJqcz15-vCkU3ygPmcE8odpiUzedzokhsxUpt9upGII3iAHPlf5eUAi68Q5aaJl0c0962hvuCVjVdvCteGYslw-pn7NfBN01136WRzhDHGybDTnIR9c8N1JCmQp4OzlFsce1rZup9OJ0uBlgABsYIQaeRCnq6VkbF9KHU/s320/WhatsApp%20Image%202026-03-30%20at%202.54.38%20PM%20(1).jpeg" 
-                 class="app-logo mx-auto mb-8">
-            <h1 class="text-3xl font-black italic uppercase tracking-tighter">MEDIDOR AR <span class="text-cyan-400">PRO</span></h1>
-            <p class="text-slate-500 text-[10px] tracking-[0.4em] mt-2 uppercase font-bold text-center">Jorge Hernández &bull; 2026</p>
-        </div>
-
-        <div class="w-full flex flex-col items-center gap-6">
-            <button id="btn-start">ENCENDER CÁMARA</button>
-
-            <!-- Panel de Estado -->
-            <div id="status-panel" class="glass p-5 rounded-3xl w-full max-w-xs space-y-4">
-                <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Sitio Seguro:</span>
-                    <span id="stat-https" class="status-pill pill-red">NO</span>
-                </div>
-                <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Sensor AR:</span>
-                    <span id="stat-ar" class="status-pill pill-red">NO</span>
-                </div>
-                
-                <!-- Aviso de Solución -->
-                <div id="fix-notice" class="hidden pt-2 border-t border-white/5 text-center">
-                    <p class="text-[10px] text-cyan-400 font-bold leading-tight mb-3">⚠️ ESTÁS EN UN NAVEGADOR RESTRINGIDO.<br>Copia el link y pégalo en CHROME.</p>
-                    <button id="btn-copy-url" class="btn-copy">Copiar Enlace AR</button>
-                </div>
-            </div>
-        </div>
-
-        <p class="text-[9px] text-slate-600 font-bold uppercase tracking-widest text-center">
-            Diseñado para Ingeniería de Campo
-        </p>
-    </div>
-
-    <!-- Interfaz de Medición (Solo activa en sesión AR) -->
-    <div id="ui-layer" class="fixed inset-0 pointer-events-none hidden flex-col justify-between p-6 z-40">
-        <div class="flex flex-col items-center">
-            <div class="glass p-5 rounded-[2.5rem] w-full max-w-sm border-cyan-500/30">
-                <div id="dist-val" class="text-6xl font-black italic text-center">0.00<span class="text-xl text-cyan-400 ml-1">m</span></div>
-                <div class="flex justify-between mt-4 border-t border-white/5 pt-4 text-[10px] font-black uppercase text-slate-500">
-                    <span>Puntos: <b id="pts-count" class="text-white">0</b></span>
-                    <span>Total: <b id="total-val" class="text-white">0.00 m</b></span>
-                </div>
-            </div>
-        </div>
-
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div class="w-12 h-12 border-2 border-white/20 rounded-full flex items-center justify-center">
-                <div class="w-2 h-2 bg-cyan-400 rounded-full shadow-[0_0_15px_#22d3ee]"></div>
-            </div>
-        </div>
-
-        <div class="flex gap-3 pointer-events-auto w-full max-w-sm mx-auto">
-            <button id="undo-act" class="glass p-5 rounded-2xl active:scale-90 text-slate-300 font-bold uppercase text-[10px]">Deshacer</button>
-            <button id="height-act" class="glass flex-1 py-5 rounded-2xl font-black text-[10px] uppercase text-white">Modo Altura</button>
-            <button onclick="location.reload()" class="glass p-5 rounded-2xl text-red-500 font-bold uppercase text-[10px]">Reset</button>
-        </div>
-    </div>
-
-    <script type="module">
-        import * as THREE from 'https://cdn.skypack.dev/three@0.128.0';
-
-        let camera, scene, renderer, reticle, hitTestSource = null;
-        let points = [], markers = [], history = [], isHeight = false, basePoint = null;
-
-        const ui = {
-            screen: document.getElementById('start-screen'),
-            work: document.getElementById('ui-layer'),
-            btn: document.getElementById('btn-start'),
-            statHttps: document.getElementById('stat-https'),
-            statAr: document.getElementById('stat-ar'),
-            fix: document.getElementById('fix-notice'),
-            copy: document.getElementById('btn-copy-url'),
-            dist: document.getElementById('dist-val'),
-            total: document.getElementById('total-val'),
-            pts: document.getElementById('pts-count')
-        };
-
-        // 1. Diagnóstico Real
-        async function runDiagnostics() {
-            const isHttps = window.isSecureContext;
-            if (isHttps) {
-                ui.statHttps.innerText = "SÍ";
-                ui.statHttps.className = "status-pill pill-green";
-            }
-
-            if ('xr' in navigator) {
-                const supported = await navigator.xr.isSessionSupported('immersive-ar');
-                if (supported) {
-                    ui.statAr.innerText = "SÍ";
-                    ui.statAr.className = "status-pill pill-green";
-                }
-            }
-
-            // Si falla el diagnóstico, mostrar ayuda para salir del chat
-            if (!isHttps || ui.statAr.innerText === "NO") {
-                ui.fix.classList.remove('hidden');
-            }
-        }
-
-        // 2. Copiar URL para pegar en Chrome
-        ui.copy.onclick = () => {
-            const dummy = document.createElement('input');
-            document.body.appendChild(dummy);
-            dummy.value = window.location.href;
-            dummy.select();
-            document.execCommand('copy');
-            document.body.removeChild(dummy);
-            ui.copy.innerText = "¡ENLACE COPIADO!";
-            ui.copy.classList.replace('btn-copy', 'bg-cyan-600');
-        };
-
-        async function startAR() {
-            try {
-                const session = await navigator.xr.requestSession('immersive-ar', {
-                    requiredFeatures: ['hit-test'],
-                    optionalFeatures: ['dom-overlay'],
-                    domOverlay: { root: document.body }
-                });
-                
-                ui.screen.style.display = 'none';
-                ui.work.style.display = 'flex';
-                setup(session);
-            } catch (e) {
-                console.error(e);
-                alert("Para usar AR, debes abrir este enlace directamente en Google Chrome.");
-            }
-        }
-
-        function setup(session) {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.xr.enabled = true;
-            document.body.appendChild(renderer.domElement);
-            renderer.xr.setSession(session);
-
-            scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
-            reticle = new THREE.Mesh(
-                new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI/2),
-                new THREE.MeshBasicMaterial({ color: 0x22d3ee })
-            );
-            reticle.matrixAutoUpdate = false;
-            reticle.visible = false;
-            scene.add(reticle);
-
-            window.addEventListener('click', (e) => {
-                if (!reticle.visible || e.target.closest('button')) return;
-                const pos = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                isHeight ? doHeight(pos) : doLine(pos);
-            });
-            renderer.setAnimationLoop(render);
-        }
-
-        function doLine(pos) {
-            if (points.length > 0) history.push(points[points.length-1].distanceTo(pos));
-            points.push(pos);
-            addMarker(pos, points.length === 1 ? 0x22c55e : 0x22d3ee);
+            
+            points.pop();
             updateUI();
         }
 
-        function doHeight(pos) {
-            if (!basePoint) {
-                basePoint = pos.clone();
-                addMarker(basePoint, 0x22c55e);
-            } else {
-                const h = Math.abs(camera.position.y - basePoint.y);
-                history.push(h);
-                addMarker(new THREE.Vector3(basePoint.x, basePoint.y + h, basePoint.z), 0xeab308);
-                basePoint = null;
-                updateUI();
-            }
+        function resetScene() {
+            measurementLines.forEach(item => {
+                if (item.mesh) scene.remove(item.mesh);
+                if (item.line) scene.remove(item.line);
+            });
+            points = [];
+            measurementLines = [];
+            totalDistance = 0;
+            updateUI();
         }
 
-        function addMarker(p, c) {
-            const m = new THREE.Mesh(new THREE.SphereGeometry(0.012), new THREE.MeshBasicMaterial({color: c}));
-            m.position.copy(p);
-            scene.add(m);
-            markers.push(m);
+        function toggleMode(mode) {
+            currentMode = mode;
+            document.getElementById('mode-linear').className = mode === 'linear' ? 'glass-panel px-6 py-3 rounded-full text-xs font-bold border-2 border-blue-500' : 'glass-panel px-6 py-3 rounded-full text-xs font-bold border-2 border-transparent text-gray-400';
+            document.getElementById('mode-height').className = mode === 'height' ? 'glass-panel px-6 py-3 rounded-full text-xs font-bold border-2 border-yellow-500 text-white' : 'glass-panel px-6 py-3 rounded-full text-xs font-bold border-2 border-transparent text-gray-400';
         }
 
         function updateUI() {
-            ui.total.innerText = history.reduce((a, b) => a + b, 0).toFixed(2) + " m";
-            ui.pts.innerText = markers.length;
+            document.getElementById('total-dist').innerText = totalDistance.toFixed(2);
+            document.getElementById('node-count').innerText = points.length;
         }
 
-        function render(timestamp, frame) {
-            if (frame) {
-                const ref = renderer.xr.getReferenceSpace();
-                const session = renderer.xr.getSession();
-                if (!hitTestSource) {
-                    session.requestReferenceSpace('viewer').then(rs => {
-                        session.requestHitTestSource({ space: rs }).then(src => hitTestSource = src);
-                    });
-                }
-                if (hitTestSource) {
-                    const hits = frame.getHitTestResults(hitTestSource);
-                    if (hits.length > 0) {
-                        reticle.visible = true;
-                        reticle.matrix.fromArray(hits[0].getPose(ref).transform.matrix);
-                        if (points.length > 0 && !isHeight) {
-                            const cur = new THREE.Vector3().setFromMatrixPosition(reticle.matrix);
-                            ui.dist.innerHTML = `${points[points.length-1].distanceTo(cur).toFixed(2)}<span class="text-lg text-cyan-400 ml-1">m</span>`;
-                        }
-                    } else reticle.visible = false;
-                }
-                if (isHeight && basePoint) {
-                    ui.dist.innerHTML = `${Math.abs(camera.position.y - basePoint.y).toFixed(2)}<span class="text-lg text-cyan-400 ml-1">m</span>`;
-                }
+        // Listener de redimensionamiento con validación estricta
+        window.addEventListener('resize', () => {
+            if (isInitialized && camera && renderer) {
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                camera.aspect = width / height;
+                camera.updateProjectionMatrix();
+                renderer.setSize(width, height);
             }
-            renderer.render(scene, camera);
-        }
+        });
 
-        ui.btn.onclick = startAR;
-        runDiagnostics();
     </script>
 </body>
 </html>
