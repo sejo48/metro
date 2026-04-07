@@ -20,36 +20,6 @@
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        input[type=range] {
-            height: 38px;
-            -webkit-appearance: none;
-            margin: 10px 0;
-            width: 100%;
-            background: transparent;
-        }
-        input[type=range]:focus {
-            outline: none;
-        }
-        input[type=range]::-webkit-slider-runnable-track {
-            width: 100%;
-            height: 10px;
-            cursor: pointer;
-            animate: 0.2s;
-            box-shadow: 1px 1px 1px #000000;
-            background: #3B82F6;
-            border-radius: 5px;
-        }
-        input[type=range]::-webkit-slider-thumb {
-            box-shadow: 1px 1px 1px #000000;
-            border: 1px solid #FFFFFF;
-            height: 30px;
-            width: 30px;
-            border-radius: 15px;
-            background: #FFFFFF;
-            cursor: pointer;
-            -webkit-appearance: none;
-            margin-top: -11px;
-        }
     </style>
 </head>
 <body class="bg-black text-white overflow-hidden font-sans">
@@ -59,8 +29,8 @@
     <!-- Pantalla de Activación -->
     <div id="start-screen" class="fixed inset-0 z-50 flex items-center justify-center p-6 glass">
         <div class="max-w-sm w-full text-center">
-            <h1 class="text-3xl font-black mb-4 text-blue-400">AJUSTE DE PRECISIÓN</h1>
-            <p class="text-gray-400 mb-8">Vamos a corregir la escala para tu celular, Jorge.</p>
+            <h1 class="text-3xl font-black mb-4 text-blue-400">MEDIDOR DE PRECISIÓN</h1>
+            <p class="text-gray-400 mb-8">Jorge, vamos a dejar la medida exacta en un segundo.</p>
             <button id="btn-init" class="w-full bg-blue-600 py-5 rounded-2xl font-black text-xl shadow-xl">
                 ABRIR MEDIDOR
             </button>
@@ -73,22 +43,18 @@
         <!-- Panel de Resultados -->
         <div class="flex flex-col gap-2 items-center">
             <div class="glass p-5 rounded-3xl border-b-4 border-blue-500 text-center w-full max-w-xs">
-                <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Resultado Actual</p>
+                <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Distancia Recorrida</p>
                 <div class="flex items-baseline justify-center">
                     <span id="dist-display" class="text-6xl font-black">0.00</span>
                     <span class="text-2xl ml-2 font-bold opacity-50">m</span>
                 </div>
             </div>
 
-            <!-- Calibrador Directo -->
-            <div class="glass p-4 rounded-2xl w-full max-w-xs pointer-events-auto">
-                <p class="text-[10px] font-bold text-yellow-500 uppercase text-center mb-1">Ajuste de Calibración</p>
-                <input type="range" id="precision-slider" min="0.1" max="10.0" step="0.05" value="1.0">
-                <div class="flex justify-between text-[10px] font-bold opacity-70">
-                    <span>MÁS CORTO</span>
-                    <span>MÁS LARGO</span>
-                </div>
-            </div>
+            <!-- Botón de Calibración Rápida -->
+            <button id="btn-calibrate" onclick="autoCalibrate()" class="glass p-3 rounded-2xl w-full max-w-xs pointer-events-auto border border-yellow-500/50 active:bg-yellow-500/20 transition-all hidden">
+                <p class="text-[10px] font-bold text-yellow-500 uppercase">¿Mides 1 metro real?</p>
+                <p class="text-xs font-black">PRESIONA AQUÍ PARA AJUSTAR</p>
+            </button>
         </div>
 
         <!-- Mira -->
@@ -101,7 +67,7 @@
         <div class="flex flex-col gap-4 pointer-events-auto">
             <button id="btn-action" onclick="handleAction()" class="w-full h-20 bg-white text-black rounded-3xl flex flex-col items-center justify-center shadow-2xl active:scale-95 transition-all">
                 <span id="action-text" class="text-xl font-black italic">FIJAR INICIO</span>
-                <span id="action-subtext" class="text-[9px] font-bold opacity-50 uppercase">Toca para marcar el punto cero</span>
+                <span id="action-subtext" class="text-[9px] font-bold opacity-50 uppercase">Toca en el punto de partida</span>
             </button>
             
             <button onclick="resetAll()" class="w-full py-4 glass rounded-2xl text-red-500 font-bold text-xs">
@@ -116,6 +82,7 @@
         let isRunning = false;
         let groundPlane;
         let userScale = 1.0;
+        let lastRawDist = 0;
 
         document.getElementById('btn-init').onclick = async () => {
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -126,10 +93,15 @@
             initApp();
         };
 
-        // Escuchar el slider de precisión
-        document.getElementById('precision-slider').oninput = (e) => {
-            userScale = parseFloat(e.target.value);
-        };
+        // Función de Calibración Automática Jorge
+        function autoCalibrate() {
+            if (lastRawDist > 0.1) {
+                userScale = 1.0 / lastRawDist;
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                alert("¡Calibrado! Ahora tu escala es exacta.");
+                document.getElementById('btn-calibrate').classList.add('hidden');
+            }
+        }
 
         async function initApp() {
             try {
@@ -186,13 +158,14 @@
                 scene.add(startMesh);
 
                 document.getElementById('action-text').innerText = "MIDIENDO...";
-                document.getElementById('action-subtext').innerText = "Aléjate del punto inicial";
+                document.getElementById('action-subtext').innerText = "Camina o mueve el celular";
                 document.getElementById('btn-action').className = "w-full h-20 bg-blue-600 text-white rounded-3xl flex flex-col items-center justify-center shadow-2xl transition-all";
+                document.getElementById('btn-calibrate').classList.remove('hidden');
                 isRunning = true;
             } else {
                 isRunning = false;
-                document.getElementById('action-text').innerText = "MEDICIÓN FIJADA";
-                document.getElementById('action-subtext').innerText = "Punto final capturado";
+                document.getElementById('action-text').innerText = "MEDIDA FINAL";
+                document.getElementById('action-subtext').innerText = "Pulsa reiniciar para otra";
             }
         }
 
@@ -203,6 +176,7 @@
             document.getElementById('dist-display').innerText = "0.00";
             document.getElementById('action-text').innerText = "FIJAR INICIO";
             document.getElementById('btn-action').className = "w-full h-20 bg-white text-black rounded-3xl flex flex-col items-center justify-center shadow-2xl transition-all";
+            document.getElementById('btn-calibrate').classList.add('hidden');
         }
 
         function animate() {
@@ -220,9 +194,8 @@
                     currentPos.y = 0;
                 }
 
-                // Aquí aplicamos el multiplicador de escala Jorge
-                const rawDist = startPoint.distanceTo(currentPos);
-                const calibratedDist = rawDist * userScale;
+                lastRawDist = startPoint.distanceTo(currentPos);
+                const calibratedDist = lastRawDist * userScale;
                 
                 document.getElementById('dist-display').innerText = calibratedDist.toFixed(2);
             }
