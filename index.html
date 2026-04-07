@@ -1,214 +1,131 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Medidor Pro Calibrado - Jorge</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        #video-background {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            object-fit: cover; z-index: -1;
-        }
-        canvas {
-            display: block; position: fixed; top: 0; left: 0;
-            z-index: 1; pointer-events: none;
-        }
-        .glass {
-            background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medidor AR Real - Jorge</title>
+
+<style>
+    body { margin: 0; overflow: hidden; font-family: sans-serif; }
+    #btn { 
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        padding: 15px 25px; background: black; color: white;
+        border-radius: 20px; font-weight: bold;
+    }
+    #info {
+        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+        color: white; font-size: 20px;
+    }
+</style>
 </head>
-<body class="bg-black text-white overflow-hidden font-sans">
 
-    <video id="video-background" autoplay playsinline muted></video>
+<body>
 
-    <!-- Pantalla de Activación -->
-    <div id="start-screen" class="fixed inset-0 z-50 flex items-center justify-center p-6 glass">
-        <div class="max-w-sm w-full text-center">
-            <h1 class="text-3xl font-black mb-4 text-blue-400">MEDIDOR DE PRECISIÓN</h1>
-            <p class="text-gray-400 mb-8">Jorge, vamos a dejar la medida exacta en un segundo.</p>
-            <button id="btn-init" class="w-full bg-blue-600 py-5 rounded-2xl font-black text-xl shadow-xl">
-                ABRIR MEDIDOR
-            </button>
-        </div>
-    </div>
+<div id="info">0.00 m</div>
+<button id="btn">INICIAR AR</button>
 
-    <!-- Interfaz de Medición -->
-    <div id="hud" class="fixed inset-0 pointer-events-none flex flex-col justify-between p-6 opacity-0 transition-opacity">
-        
-        <!-- Panel de Resultados -->
-        <div class="flex flex-col gap-2 items-center">
-            <div class="glass p-5 rounded-3xl border-b-4 border-blue-500 text-center w-full max-w-xs">
-                <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Distancia Recorrida</p>
-                <div class="flex items-baseline justify-center">
-                    <span id="dist-display" class="text-6xl font-black">0.00</span>
-                    <span class="text-2xl ml-2 font-bold opacity-50">m</span>
-                </div>
-            </div>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
+import { ARButton } from "https://cdn.jsdelivr.net/npm/three@0.158/examples/jsm/webxr/ARButton.js";
 
-            <!-- Botón de Calibración Rápida -->
-            <button id="btn-calibrate" onclick="autoCalibrate()" class="glass p-3 rounded-2xl w-full max-w-xs pointer-events-auto border border-yellow-500/50 active:bg-yellow-500/20 transition-all hidden">
-                <p class="text-[10px] font-bold text-yellow-500 uppercase">¿Mides 1 metro real?</p>
-                <p class="text-xs font-black">PRESIONA AQUÍ PARA AJUSTAR</p>
-            </button>
-        </div>
+let camera, scene, renderer;
+let controller;
+let hitTestSource = null;
+let hitTestSourceRequested = false;
 
-        <!-- Mira -->
-        <div class="flex items-center justify-center">
-            <div class="w-2 h-2 bg-white rounded-full shadow-[0_0_10px_white]"></div>
-            <div class="absolute w-12 h-12 border border-white/20 rounded-full"></div>
-        </div>
+let startPoint = null;
 
-        <!-- Botones -->
-        <div class="flex flex-col gap-4 pointer-events-auto">
-            <button id="btn-action" onclick="handleAction()" class="w-full h-20 bg-white text-black rounded-3xl flex flex-col items-center justify-center shadow-2xl active:scale-95 transition-all">
-                <span id="action-text" class="text-xl font-black italic">FIJAR INICIO</span>
-                <span id="action-subtext" class="text-[9px] font-bold opacity-50 uppercase">Toca en el punto de partida</span>
-            </button>
-            
-            <button onclick="resetAll()" class="w-full py-4 glass rounded-2xl text-red-500 font-bold text-xs">
-                REINICIAR TODO
-            </button>
-        </div>
-    </div>
+init();
 
-    <script>
-        let scene, camera, renderer, raycaster;
-        let startPoint = null, startMesh = null;
-        let isRunning = false;
-        let groundPlane;
-        let userScale = 1.0;
-        let lastRawDist = 0;
+function init() {
 
-        document.getElementById('btn-init').onclick = async () => {
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try { await DeviceOrientationEvent.requestPermission(); } catch (e) { }
-            }
-            document.getElementById('start-screen').classList.add('hidden');
-            document.getElementById('hud').classList.remove('opacity-0');
-            initApp();
-        };
+    scene = new THREE.Scene();
 
-        // Función de Calibración Automática Jorge
-        function autoCalibrate() {
-            if (lastRawDist > 0.1) {
-                userScale = 1.0 / lastRawDist;
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-                alert("¡Calibrado! Ahora tu escala es exacta.");
-                document.getElementById('btn-calibrate').classList.add('hidden');
-            }
-        }
+    camera = new THREE.PerspectiveCamera();
 
-        async function initApp() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment', width: { ideal: 1280 } } 
+    renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+
+    document.body.appendChild(renderer.domElement);
+
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+    scene.add(light);
+
+    controller = renderer.xr.getController(0);
+    controller.addEventListener('select', onSelect);
+    scene.add(controller);
+
+    document.getElementById("btn").onclick = () => {
+        document.body.appendChild(
+            ARButton.createButton(renderer, {
+                requiredFeatures: ['hit-test']
+            })
+        );
+    };
+
+    renderer.setAnimationLoop(render);
+}
+
+function onSelect() {
+    if (!hitTestSource) return;
+
+    if (!startPoint) {
+        startPoint = new THREE.Vector3().setFromMatrixPosition(currentMatrix);
+    } else {
+        startPoint = null;
+        document.getElementById("info").innerText = "0.00 m";
+    }
+}
+
+let currentMatrix = new THREE.Matrix4();
+
+function render(timestamp, frame) {
+
+    if (frame) {
+
+        const referenceSpace = renderer.xr.getReferenceSpace();
+        const session = renderer.xr.getSession();
+
+        if (!hitTestSourceRequested) {
+
+            session.requestReferenceSpace('viewer').then((space) => {
+                session.requestHitTestSource({ space: space }).then((source) => {
+                    hitTestSource = source;
                 });
-                document.getElementById('video-background').srcObject = stream;
-            } catch (e) { alert("Error de cámara"); }
+            });
 
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
-            document.body.appendChild(renderer.domElement);
+            session.addEventListener('end', () => {
+                hitTestSourceRequested = false;
+                hitTestSource = null;
+            });
 
-            raycaster = new THREE.Raycaster();
-            const groundGeo = new THREE.PlaneGeometry(1000, 1000);
-            groundGeo.rotateX(-Math.PI / 2);
-            groundPlane = new THREE.Mesh(groundGeo, new THREE.MeshBasicMaterial({ visible: false }));
-            scene.add(groundPlane);
-
-            camera.position.set(0, 1.6, 0);
-
-            window.addEventListener('deviceorientation', (e) => {
-                if (!e.alpha) return;
-                const alpha = THREE.MathUtils.degToRad(e.alpha);
-                const beta = THREE.MathUtils.degToRad(e.beta);
-                const gamma = THREE.MathUtils.degToRad(e.gamma);
-                camera.rotation.set(beta - Math.PI/2, gamma, alpha, 'YXZ');
-            }, true);
-
-            animate();
+            hitTestSourceRequested = true;
         }
 
-        function handleAction() {
-            if (!isRunning) {
-                raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-                const intersects = raycaster.intersectObject(groundPlane);
-                
-                if (intersects.length > 0) {
-                    startPoint = intersects[0].point.clone();
-                } else {
-                    const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-                    startPoint = new THREE.Vector3().copy(camera.position).add(dir.multiplyScalar(1.5));
-                    startPoint.y = 0;
+        if (hitTestSource) {
+            const hitTestResults = frame.getHitTestResults(hitTestSource);
+
+            if (hitTestResults.length) {
+
+                const hit = hitTestResults[0];
+                const pose = hit.getPose(referenceSpace);
+
+                currentMatrix.fromArray(pose.transform.matrix);
+
+                const currentPos = new THREE.Vector3().setFromMatrixPosition(currentMatrix);
+
+                if (startPoint) {
+                    const dist = startPoint.distanceTo(currentPos);
+                    document.getElementById("info").innerText = dist.toFixed(2) + " m";
                 }
-
-                startMesh = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.08, 16, 16),
-                    new THREE.MeshBasicMaterial({ color: 0x22c55e })
-                );
-                startMesh.position.copy(startPoint);
-                scene.add(startMesh);
-
-                document.getElementById('action-text').innerText = "MIDIENDO...";
-                document.getElementById('action-subtext').innerText = "Camina o mueve el celular";
-                document.getElementById('btn-action').className = "w-full h-20 bg-blue-600 text-white rounded-3xl flex flex-col items-center justify-center shadow-2xl transition-all";
-                document.getElementById('btn-calibrate').classList.remove('hidden');
-                isRunning = true;
-            } else {
-                isRunning = false;
-                document.getElementById('action-text').innerText = "MEDIDA FINAL";
-                document.getElementById('action-subtext').innerText = "Pulsa reiniciar para otra";
             }
         }
+    }
 
-        function resetAll() {
-            if (startMesh) scene.remove(startMesh);
-            startPoint = null;
-            isRunning = false;
-            document.getElementById('dist-display').innerText = "0.00";
-            document.getElementById('action-text').innerText = "FIJAR INICIO";
-            document.getElementById('btn-action').className = "w-full h-20 bg-white text-black rounded-3xl flex flex-col items-center justify-center shadow-2xl transition-all";
-            document.getElementById('btn-calibrate').classList.add('hidden');
-        }
+    renderer.render(scene, camera);
+}
+</script>
 
-        function animate() {
-            requestAnimationFrame(animate);
-            if (isRunning && startPoint) {
-                raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
-                const intersects = raycaster.intersectObject(groundPlane);
-                
-                let currentPos = new THREE.Vector3();
-                if (intersects.length > 0) {
-                    currentPos.copy(intersects[0].point);
-                } else {
-                    const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-                    currentPos.copy(camera.position).add(dir.multiplyScalar(1.5));
-                    currentPos.y = 0;
-                }
-
-                lastRawDist = startPoint.distanceTo(currentPos);
-                const calibratedDist = lastRawDist * userScale;
-                
-                document.getElementById('dist-display').innerText = calibratedDist.toFixed(2);
-            }
-            renderer.render(scene, camera);
-        }
-
-        window.addEventListener('resize', () => {
-            if (camera && renderer) {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            }
-        });
-    </script>
 </body>
 </html>
