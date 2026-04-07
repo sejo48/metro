@@ -3,88 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Real Measure - Jorge</title>
+    <title>AR Measure Pro - Jorge</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; }
-        #overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; flex-col: column; justify-content: space-between;
-            pointer-events: none; z-index: 10; padding: 24px;
-        }
-        .glass {
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            pointer-events: auto;
-        }
-        #ar-button {
-            pointer-events: auto;
-            background: #3b82f6;
-            color: white;
-            font-weight: 900;
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: ui-sans-serif, system-ui; }
+        
+        /* Contenedor principal de la interfaz */
+        #ar-ui {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
             padding: 20px;
-            border-radius: 16px;
-            text-align: center;
+            pointer-events: none; /* Deja pasar los clicks al fondo */
+            z-index: 100;
+        }
+
+        #ar-ui * { pointer-events: auto; } /* Reactiva clicks para botones */
+
+        .glass {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes scan-pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        .scanner-ring { animation: scan-pulse 2s infinite ease-in-out; }
+
+        /* Botón de inicio centrado al principio */
+        #welcome-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f172a;
         }
     </style>
 </head>
 <body>
 
-    <!-- Interfaz de Usuario -->
-    <div id="overlay">
-        <!-- Info Superior -->
-        <div class="flex justify-center">
-            <div id="info-panel" class="glass p-6 rounded-3xl border-b-4 border-blue-500 text-center w-full max-w-xs hidden">
-                <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Distancia Real</p>
-                <div class="flex items-baseline justify-center">
-                    <span id="dist-display" class="text-6xl font-black">0.00</span>
-                    <span class="text-2xl ml-2 font-bold opacity-50">m</span>
+    <!-- Pantalla de Bienvenida -->
+    <div id="welcome-screen">
+        <div class="text-center p-8 max-w-sm">
+            <div class="w-20 h-20 bg-blue-600 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl shadow-blue-500/50">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M2 7h20"/><path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"/></svg>
+            </div>
+            <h1 class="text-white text-3xl font-black mb-2 tracking-tighter">AR MEASURE PRO</h1>
+            <p class="text-slate-400 text-sm mb-8">Sistema de medición con rastreo de profundidad real.</p>
+            <button id="ar-button" class="w-full bg-white text-slate-900 font-bold py-4 rounded-2xl shadow-xl active:scale-95 transition-transform">
+                INICIAR CÁMARA AR
+            </button>
+            <p class="mt-4 text-[10px] text-slate-500 uppercase tracking-widest">Requiere Chrome y HTTPS</p>
+        </div>
+    </div>
+
+    <!-- Interfaz AR (Solo visible en sesión) -->
+    <div id="ar-ui" class="hidden">
+        <!-- TOP: Información -->
+        <div class="flex justify-between items-start gap-4">
+            <div class="glass flex-1 p-4 rounded-3xl">
+                <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Distancia</p>
+                <div class="flex items-baseline gap-1">
+                    <span id="dist-display" class="text-4xl font-black text-white">0.00</span>
+                    <span class="text-lg font-bold text-slate-500">m</span>
                 </div>
             </div>
+            <div class="glass p-4 rounded-3xl text-right">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Puntos</p>
+                <span id="node-count" class="text-2xl font-black text-white">0</span>
+            </div>
         </div>
 
-        <!-- Centro: Guía de escaneo -->
-        <div id="scanner-guide" class="text-center">
-            <p class="text-white font-bold text-sm bg-black/50 py-2 px-4 rounded-full inline-block">Mueve el celular para detectar el piso...</p>
+        <!-- CENTER: Guía de escaneo -->
+        <div id="scanner-guide" class="flex flex-col items-center gap-4">
+            <div class="w-16 h-16 border-4 border-white/20 rounded-full flex items-center justify-center scanner-ring">
+                <div class="w-2 h-2 bg-white rounded-full"></div>
+            </div>
+            <p class="text-white text-[11px] font-bold uppercase tracking-widest bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm">Escaneando Superficie...</p>
         </div>
 
-        <!-- Botones Inferiores -->
+        <!-- BOTTOM: Controles -->
         <div class="flex flex-col gap-4">
-            <div id="ui-controls" class="hidden flex flex-col gap-4">
-                <button id="btn-mark" class="glass w-full h-24 bg-white text-black rounded-3xl flex flex-col items-center justify-center shadow-2xl active:scale-95 transition-all">
-                    <span id="action-text" class="text-2xl font-black italic">FIJAR INICIO</span>
-                    <span class="text-[9px] font-bold opacity-50 uppercase">Toca para poner el punto en el piso</span>
+            <!-- Botón de Acción Principal -->
+            <button id="btn-mark" class="w-full h-24 bg-blue-600 text-white rounded-[40px] flex flex-col items-center justify-center shadow-2xl shadow-blue-900/50 active:scale-95 transition-all border-t border-white/20">
+                <span id="action-text" class="text-2xl font-black italic tracking-tighter">FIJAR PUNTO</span>
+                <span class="text-[9px] font-bold opacity-70 uppercase tracking-widest mt-1">Marcar posición en el suelo</span>
+            </button>
+
+            <!-- Acciones secundarias -->
+            <div class="flex gap-3">
+                <button onclick="undoLastPoint()" class="glass flex-1 py-4 rounded-2xl text-yellow-500 font-bold text-xs uppercase flex items-center justify-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+                    Deshacer
                 </button>
-                <button onclick="location.reload()" class="glass w-full py-4 rounded-2xl text-red-500 font-bold text-xs uppercase">
-                    Reiniciar Aplicación
+                <button onclick="location.reload()" class="glass flex-1 py-4 rounded-2xl text-red-500 font-bold text-xs uppercase flex items-center justify-center gap-2">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    Reiniciar
                 </button>
             </div>
-            
-            <!-- Botón de entrada AR (Siempre visible al inicio) -->
-            <button id="ar-button">INICIAR MODO AR</button>
         </div>
     </div>
 
     <script>
-        let renderer, scene, camera;
-        let xrSession = null;
+        let renderer, scene, camera, xrSession;
         let hitTestSource = null;
         let hitTestSourceRequested = false;
-        let startPoint = null;
-        let marker = null;
+        let points = [];
+        let visualNodes = [];
+        let visualLines = [];
+        let marker;
         let isMeasuring = false;
-        let currentPoint = new THREE.Vector3();
 
         const arButton = document.getElementById('ar-button');
-        const infoPanel = document.getElementById('info-panel');
-        const uiControls = document.getElementById('ui-controls');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const arUI = document.getElementById('ar-ui');
         const btnMark = document.getElementById('btn-mark');
         const distDisplay = document.getElementById('dist-display');
+        const nodeCountDisplay = document.getElementById('node-count');
         const scannerGuide = document.getElementById('scanner-guide');
 
-        // Inicialización de Three.js
         function init() {
             scene = new THREE.Scene();
             camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
@@ -95,77 +141,97 @@
             renderer.xr.enabled = true;
             document.body.appendChild(renderer.domElement);
 
-            // Luz básica
-            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
-            scene.add(light);
+            scene.add(new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1));
 
-            // Marcador que sigue al piso
-            const markerGeo = new THREE.RingGeometry(0.04, 0.05, 32).rotateX(-Math.PI / 2);
-            marker = new THREE.Mesh(markerGeo, new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
+            // Marcador de suelo (Retícula interactiva)
+            const ringGeo = new THREE.RingGeometry(0.045, 0.05, 32).rotateX(-Math.PI / 2);
+            marker = new THREE.Mesh(ringGeo, new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
             marker.visible = false;
             scene.add(marker);
 
-            arButton.addEventListener('click', onArButtonClick);
+            arButton.addEventListener('click', startAR);
+            btnMark.addEventListener('click', markPoint);
         }
 
-        async function onArButtonClick() {
-            if (xrSession === null) {
-                const sessionInit = { optionalFeatures: ['dom-overlay'], domOverlay: { root: document.body } };
+        async function startAR() {
+            if (navigator.xr) {
+                const sessionInit = { 
+                    optionalFeatures: ['dom-overlay'], 
+                    domOverlay: { root: document.body } 
+                };
                 try {
                     const session = await navigator.xr.requestSession('immersive-ar', sessionInit);
                     onSessionStarted(session);
                 } catch (e) {
-                    alert("Tu celular no soporta AR Real o necesitas usar HTTPS.");
+                    alert("Error: Tu dispositivo no soporta WebXR o no estás en una conexión segura (HTTPS).");
                 }
+            } else {
+                alert("WebXR no está disponible en este navegador.");
             }
         }
 
         function onSessionStarted(session) {
             xrSession = session;
-            arButton.classList.add('hidden');
-            infoPanel.classList.remove('hidden');
-            uiControls.classList.remove('hidden');
-
-            session.addEventListener('end', () => {
-                xrSession = null;
-                location.reload();
-            });
+            welcomeScreen.classList.add('hidden');
+            arUI.classList.remove('hidden');
 
             renderer.xr.setSession(session);
             renderer.setAnimationLoop(render);
+
+            session.addEventListener('end', () => {
+                location.reload();
+            });
         }
 
-        btnMark.addEventListener('click', () => {
+        function markPoint() {
             if (!marker.visible) return;
 
-            if (!isMeasuring) {
-                // Poner punto inicial
-                startPoint = new THREE.Vector3().setFromMatrixPosition(marker.matrix);
-                
-                const dot = new THREE.Mesh(
-                    new THREE.SphereGeometry(0.02, 16, 16),
-                    new THREE.MeshBasicMaterial({ color: 0x22c55e })
-                );
-                dot.position.copy(startPoint);
-                scene.add(dot);
+            const pos = new THREE.Vector3().setFromMatrixPosition(marker.matrix);
+            
+            // Crear nodo visual
+            const nodeGeo = new THREE.SphereGeometry(0.02, 16, 16);
+            const nodeMat = new THREE.MeshBasicMaterial({ color: points.length === 0 ? 0x22c55e : 0x22d3ee });
+            const nodeMesh = new THREE.Mesh(nodeGeo, nodeMat);
+            nodeMesh.position.copy(pos);
+            scene.add(nodeMesh);
+            visualNodes.push(nodeMesh);
 
-                document.getElementById('action-text').innerText = "MIDIENDO...";
-                isMeasuring = true;
-            } else {
-                isMeasuring = false;
-                document.getElementById('action-text').innerText = "MEDIDA FIJADA";
-                btnMark.classList.add('opacity-50');
+            // Si hay un punto previo, crear línea
+            if (points.length > 0) {
+                const prevPos = points[points.length - 1];
+                const lineGeo = new THREE.BufferGeometry().setFromPoints([prevPos, pos]);
+                const line = new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color: 0x22d3ee, linewidth: 4 }));
+                scene.add(line);
+                visualLines.push(line);
             }
-        });
+
+            points.push(pos);
+            nodeCountDisplay.innerText = points.length;
+            
+            if (navigator.vibrate) navigator.vibrate(40);
+        }
+
+        function undoLastPoint() {
+            if (points.length === 0) return;
+            
+            points.pop();
+            const node = visualNodes.pop();
+            if (node) scene.remove(node);
+            
+            const line = visualLines.pop();
+            if (line) scene.remove(line);
+            
+            nodeCountDisplay.innerText = points.length;
+        }
 
         function render(timestamp, frame) {
             if (frame) {
                 const referenceSpace = renderer.xr.getReferenceSpace();
                 const session = frame.session;
 
-                if (hitTestSourceRequested === false) {
-                    session.requestReferenceSpace('viewer').then((referenceSpace) => {
-                        session.requestHitTestSource({ space: referenceSpace }).then((source) => {
+                if (!hitTestSourceRequested) {
+                    session.requestReferenceSpace('viewer').then((ref) => {
+                        session.requestHitTestSource({ space: ref }).then((source) => {
                             hitTestSource = source;
                         });
                     });
@@ -173,23 +239,25 @@
                 }
 
                 if (hitTestSource) {
-                    const hitTestResults = frame.getHitTestResults(hitTestSource);
-                    if (hitTestResults.length > 0) {
-                        const hit = hitTestResults[0];
+                    const results = frame.getHitTestResults(hitTestSource);
+                    if (results.length > 0) {
+                        const hit = results[0];
                         const pose = hit.getPose(referenceSpace);
 
                         marker.visible = true;
                         marker.matrix.fromArray(pose.transform.matrix);
-                        scannerGuide.classList.add('hidden');
+                        scannerGuide.classList.add('opacity-0');
 
-                        if (isMeasuring && startPoint) {
-                            currentPoint.setFromMatrixPosition(marker.matrix);
-                            // DISTANCIA FÍSICA REAL (WebXR usa metros)
-                            const dist = startPoint.distanceTo(currentPoint);
+                        // Medición en tiempo real desde el último punto al marcador
+                        if (points.length > 0) {
+                            const lastPoint = points[points.length - 1];
+                            const currentPos = new THREE.Vector3().setFromMatrixPosition(marker.matrix);
+                            const dist = lastPoint.distanceTo(currentPos);
                             distDisplay.innerText = dist.toFixed(2);
                         }
                     } else {
                         marker.visible = false;
+                        scannerGuide.classList.remove('opacity-0');
                     }
                 }
             }
