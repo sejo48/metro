@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AR Measure Pro - Jorge Edition</title>
+    <title>AR Measure Pro - Calibrado</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
@@ -22,7 +22,7 @@
             z-index: 1; pointer-events: none;
         }
         .glass-panel {
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.15);
         }
@@ -35,11 +35,10 @@
     <!-- Diagnóstico y Permisos -->
     <div id="diag-overlay" class="fixed inset-0 z-50 flex items-center justify-center p-6 glass-panel">
         <div class="max-w-md w-full bg-gray-900 rounded-3xl p-8 shadow-2xl border border-blue-500/30">
-            <h2 class="text-2xl font-bold mb-4 text-center text-blue-400">Sistema de Medición</h2>
-            <p class="text-gray-400 text-sm mb-6 text-center">Para medir con precisión, necesitamos acceso a la cámara y a los sensores de movimiento del equipo.</p>
-            <div id="diag-list" class="space-y-3 mb-6"></div>
-            <button id="btn-start" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl shadow-lg shadow-blue-900/40">
-                ACTIVAR Y COMENZAR
+            <h2 class="text-2xl font-bold mb-4 text-center text-blue-400">Calibración de Medida</h2>
+            <p class="text-gray-400 text-sm mb-6 text-center">Para corregir el error de 0.33m, asegúrate de dar permisos de movimiento y cámara.</p>
+            <button id="btn-start" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-xl shadow-lg">
+                CALIBRAR Y EMPEZAR
             </button>
         </div>
     </div>
@@ -51,13 +50,17 @@
                 <p class="text-[10px] text-gray-400 uppercase font-black tracking-widest">Longitud Total</p>
                 <p class="text-4xl font-black text-white"><span id="total-dist">0.00</span><span class="text-lg ml-1 opacity-50">m</span></p>
             </div>
-            <div class="glass-panel p-4 rounded-2xl text-right">
-                <p class="text-[10px] text-gray-400 uppercase font-black tracking-widest">Puntos</p>
-                <p id="node-count" class="text-2xl font-bold text-blue-400">0</p>
+            
+            <!-- Selector de Calibración (Ajuste de Altura) -->
+            <div class="glass-panel p-3 rounded-2xl pointer-events-auto flex flex-col items-center">
+                <p class="text-[9px] text-blue-400 font-bold mb-1">ALTURA CÁMARA (m)</p>
+                <input type="range" id="height-range" min="0.5" max="2.5" step="0.1" value="1.6" 
+                       class="w-24 accent-blue-500 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+                <span id="height-val" class="text-xs font-bold mt-1">1.6 m</span>
             </div>
         </div>
 
-        <!-- Retícula Central mejorada -->
+        <!-- Retícula Central -->
         <div class="flex items-center justify-center">
             <div class="relative flex items-center justify-center">
                 <div class="w-16 h-16 border border-white/30 rounded-full reticle-pulse"></div>
@@ -76,16 +79,16 @@
             </div>
             
             <div class="flex items-center justify-between gap-4 pb-4">
-                <button onclick="resetScene()" class="w-14 h-14 rounded-full glass-panel flex items-center justify-center text-red-500 active:scale-90 transition-transform">
+                <button onclick="resetScene()" class="w-14 h-14 rounded-full glass-panel flex items-center justify-center text-red-500">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
                 </button>
 
                 <button onclick="addPoint()" class="flex-1 h-20 bg-blue-600 text-white rounded-3xl flex flex-col items-center justify-center shadow-2xl active:scale-95 transition-all">
                     <span class="text-xl font-black tracking-tighter italic">CAPTURAR</span>
-                    <span class="text-[9px] font-bold opacity-70 tracking-widest">FIJAR POSICIÓN</span>
+                    <span class="text-[9px] font-bold opacity-70 tracking-widest uppercase">Fijar Punto</span>
                 </button>
 
-                <button onclick="undoLastPoint()" class="w-14 h-14 rounded-full glass-panel flex items-center justify-center text-yellow-500 active:scale-90 transition-transform">
+                <button onclick="undoLastPoint()" class="w-14 h-14 rounded-full glass-panel flex items-center justify-center text-yellow-500">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
                 </button>
             </div>
@@ -97,60 +100,59 @@
         let points = [], measurementLines = [];
         let currentMode = 'linear', totalDistance = 0, isInitialized = false;
         let groundPlane;
+        let deviceHeight = 1.6;
 
         // --- SISTEMA DE SENSORES Y ARRANQUE ---
         document.getElementById('btn-start').onclick = async () => {
-            // Solicitar permisos de sensores (Necesario en iOS)
             if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
-                    await DeviceOrientationEvent.requestPermission();
-                } catch (e) { console.error(e); }
+                try { await DeviceOrientationEvent.requestPermission(); } catch (e) { console.error(e); }
             }
-
             document.getElementById('diag-overlay').classList.add('hidden');
             document.getElementById('hud').classList.remove('opacity-0');
             initApp();
         };
 
+        // Escuchar cambios en el slider de altura
+        document.getElementById('height-range').oninput = (e) => {
+            deviceHeight = parseFloat(e.target.value);
+            document.getElementById('height-val').innerText = deviceHeight + " m";
+            if(camera) camera.position.y = deviceHeight;
+        };
+
         async function initApp() {
             if (isInitialized) return;
 
-            // 1. Cámara de video
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
+                    video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } 
                 });
                 document.getElementById('video-background').srcObject = stream;
-            } catch (e) { alert("Error de cámara: " + e.message); }
+            } catch (e) { alert("Cámara no detectada."); }
 
-            // 2. Escena 3D
             scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 1000);
+            // FOV ajustado para cámaras móviles estándar (aprox 60-70)
+            camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.01, 1000);
             
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.setPixelRatio(window.devicePixelRatio);
             document.body.appendChild(renderer.domElement);
 
             raycaster = new THREE.Raycaster();
 
-            // Suelo de referencia
             const groundGeo = new THREE.PlaneGeometry(200, 200);
             groundGeo.rotateX(-Math.PI / 2);
             groundPlane = new THREE.Mesh(groundGeo, new THREE.MeshBasicMaterial({ visible: false }));
             scene.add(groundPlane);
 
             scene.add(new THREE.AmbientLight(0xffffff, 1));
-            camera.position.set(0, 1.6, 0); // Altura de ojos aprox.
+            camera.position.set(0, deviceHeight, 0); 
 
-            // 3. Seguimiento de Orientación (Giroscopio)
             window.addEventListener('deviceorientation', (e) => {
                 if (!e.alpha) return;
                 const alpha = THREE.MathUtils.degToRad(e.alpha);
                 const beta = THREE.MathUtils.degToRad(e.beta);
                 const gamma = THREE.MathUtils.degToRad(e.gamma);
-                
-                // Orientación básica para dispositivos móviles
                 camera.rotation.set(beta - Math.PI/2, gamma, alpha, 'YXZ');
             }, true);
 
@@ -162,7 +164,6 @@
             if (!isInitialized) return;
             requestAnimationFrame(animate);
             
-            // Calculamos hacia dónde mira el usuario para el popup de distancia
             raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
             const intersects = raycaster.intersectObject(groundPlane);
             
@@ -182,13 +183,11 @@
                 document.getElementById('current-segment-val').innerText = d.toFixed(2);
                 document.getElementById('segment-dist-popup').style.opacity = '1';
             }
-
             renderer.render(scene, camera);
         }
 
         function addPoint() {
             if (!isInitialized) return;
-
             raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
             const intersects = raycaster.intersectObject(groundPlane);
 
@@ -196,22 +195,15 @@
             if (intersects.length > 0) {
                 pos.copy(intersects[0].point);
             } else {
-                // Si no apunta al suelo, poner el punto a 1.5 metros frente a la cámara
                 const dir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);
-                pos.copy(camera.position).add(dir.multiplyScalar(1.5));
+                pos.copy(camera.position).add(dir.multiplyScalar(deviceHeight));
             }
 
             const color = points.length === 0 ? 0x22c55e : (currentMode === 'height' ? 0xeab308 : 0x3b82f6);
-
-            // Marcador visual (Esfera más grande)
-            const dot = new THREE.Mesh(
-                new THREE.SphereGeometry(0.06, 16, 16),
-                new THREE.MeshBasicMaterial({ color: color })
-            );
+            const dot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), new THREE.MeshBasicMaterial({ color: color }));
             dot.position.copy(pos);
             scene.add(dot);
 
-            // Línea de unión
             let line = null;
             if (points.length > 0) {
                 const last = points[points.length - 1].pos;
@@ -223,7 +215,6 @@
 
             measurementLines.push({ dot, line });
             points.push({ pos, mode: currentMode });
-            
             if (navigator.vibrate) navigator.vibrate(40);
             updateUI();
         }
